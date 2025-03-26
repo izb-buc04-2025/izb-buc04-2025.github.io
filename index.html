@@ -1,66 +1,111 @@
 <!DOCTYPE html>
-<html>
-<head>
-<title>Page Title</title>
-</head>
-<body>
-
-<h1>Nadpis aaaaa</h1>
-<p>Prvá veta. Druhá veta.</p>
-
-</body>
-</html>
-
-<html>
-<body>
-
-<h2>Logo EUBA</h2>
-<img src="obrazky/EUBA.jpg" alt="Logo EUBA" width="500">
-
-</body>
-</html>
-
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>File Upload</title>
+    <title>GitHub File Management</title>
 </head>
 <body>
-    <h1>Upload a File to GitHub</h1>
-    <input type="file" id="fileInput">
-    <button id="uploadBtn">Upload File</button>
+    <h1>Upload and Delete Files</h1>
+
+    <!-- Upload Form -->
+    <input type="file" id="fileUpload">
+    <button onclick="uploadFile()">Upload File</button>
+
+    <!-- Delete Form -->
+    <input type="text" id="fileToDelete" placeholder="Enter file name to delete">
+    <button onclick="deleteFile()">Delete File</button>
 
     <script>
-        const uploadBtn = document.getElementById('uploadBtn');
-        const fileInput = document.getElementById('fileInput');
+        const token = 'YOUR_GITHUB_PERSONAL_ACCESS_TOKEN';  // Replace with your GitHub token
+        const repoOwner = 'YOUR_GITHUB_USERNAME'; // Replace with your GitHub username
+        const repoName = 'YOUR_REPOSITORY_NAME'; // Replace with your repository name
+        const branchName = 'main'; // Replace with your branch name if different
 
-        uploadBtn.addEventListener('click', async () => {
+        // Upload File Function
+        function uploadFile() {
+            const fileInput = document.getElementById('fileUpload');
             const file = fileInput.files[0];
             if (!file) {
-                alert("Please select a file first.");
+                alert('No file selected!');
                 return;
             }
 
-            const formData = new FormData();
-            formData.append("file", file);
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const content = e.target.result;
+                const path = 'path/to/your/file/' + file.name;  // Define where the file should be stored
 
-            try {
-                const response = await fetch("YOUR_BACKEND_URL_HERE", {
-                    method: "POST",
-                    body: formData
-                });
+                fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${path}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: 'Upload file via GitHub API',
+                        content: btoa(content)  // Encode file content in base64
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.commit) {
+                        alert('File uploaded successfully!');
+                    } else {
+                        alert('Error uploading file.');
+                    }
+                })
+                .catch(error => alert('Error: ' + error));
+            };
+            reader.readAsBinaryString(file);
+        }
 
-                if (response.ok) {
-                    alert("File uploaded successfully!");
-                } else {
-                    alert("Error uploading file.");
-                }
-            } catch (error) {
-                console.error(error);
-                alert("An error occurred.");
+        // Delete File Function
+        function deleteFile() {
+            const fileName = document.getElementById('fileToDelete').value;
+            if (!fileName) {
+                alert('Please enter a file name to delete');
+                return;
             }
-        });
+
+            const path = 'path/to/your/file/' + fileName;
+
+            // First, get the file's SHA value to delete it
+            fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${path}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `token ${token}`
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.sha) {
+                    fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${path}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': `token ${token}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            message: 'Delete file via GitHub API',
+                            sha: data.sha
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.commit) {
+                            alert('File deleted successfully!');
+                        } else {
+                            alert('Error deleting file.');
+                        }
+                    })
+                    .catch(error => alert('Error: ' + error));
+                } else {
+                    alert('File not found!');
+                }
+            })
+            .catch(error => alert('Error: ' + error));
+        }
     </script>
 </body>
 </html>
