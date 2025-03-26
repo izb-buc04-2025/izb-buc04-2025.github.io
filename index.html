@@ -1,4 +1,4 @@
-     <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -31,7 +31,7 @@
     <h1>Upload Your File</h1>
     <form id="upload-form">
         <input type="file" id="file-input" required>
-        <button type="submit">Upload File</button>
+        <button type="button" id="upload-button">Upload File</button> <!-- Changed button type to 'button' -->
     </form>
 
     <!-- Progress Bar Container -->
@@ -50,49 +50,57 @@
             projectId: "izb-buc04-2025-22695",
             storageBucket: "izb-buc04-2025-22695.firebasestorage.app",
             messagingSenderId: "903792104813",
-            appId: "1:903792104813:web:db89dd83027b792662b664"
+            appId: "1:903792104813:web:db89dd83027b792662b664",
         };
 
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const storage = getStorage(app);
 
-        // Upload form handler
-        document.getElementById('upload-form').addEventListener('submit', function(event) {
-            event.preventDefault(); // Prevent page refresh on form submit
+        // Get the upload button and file input
+        const uploadButton = document.getElementById('upload-button');
+        const fileInput = document.getElementById('file-input');
 
-            const file = document.getElementById('file-input').files[0];
-            if (file) {
-                // Create a reference to the file in Firebase Storage
-                const storageRef = ref(storage, 'uploads/' + file.name);
-                
-                // Create the upload task
-                const uploadTask = uploadBytesResumable(storageRef, file);
-
-                // Get references to the progress bar and status message
-                const progressBar = document.getElementById('progress-bar');
-                const status = document.getElementById('status');
-
-                // Monitor upload progress
-                uploadTask.on('state_changed', 
-                    function(snapshot) {
-                        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                        progressBar.style.width = progress + '%'; // Update the progress bar width
-                        status.textContent = 'Uploading: ' + Math.round(progress) + '%'; // Update status text
-                    },
-                    function(error) {
-                        console.error("Error uploading file: ", error);
-                        status.textContent = 'Error uploading file. Please try again.';
-                    },
-                    function() {
-                        // Once the upload is complete, get the download URL
-                        getDownloadURL(uploadTask.snapshot.ref).then(function(downloadURL) {
-                            console.log('File available at', downloadURL); // File URL after upload
-                            status.textContent = 'File uploaded successfully! URL: ' + downloadURL;
-                        });
-                    }
-                );
+        // Listen for button click to start file upload
+        uploadButton.addEventListener('click', function(event) {
+            const file = fileInput.files[0];
+            if (!file) {
+                alert("Please select a file to upload.");
+                return;
             }
+
+            // Prevent form submission (no refresh)
+            event.preventDefault();
+
+            // Create a reference to the file in Firebase Storage
+            const storageRef = ref(storage, 'uploads/' + file.name);
+            
+            // Create the upload task
+            const uploadTask = uploadBytesResumable(storageRef, file);
+
+            // Get references to the progress bar and status message
+            const progressBar = document.getElementById('progress-bar');
+            const status = document.getElementById('status');
+
+            // Monitor upload progress
+            uploadTask.on('state_changed', 
+                function(snapshot) {
+                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                    progressBar.style.width = progress + '%'; // Update the progress bar width
+                    status.textContent = 'Uploading: ' + Math.round(progress) + '%'; // Update status text
+                },
+                function(error) {
+                    console.error("Error uploading file: ", error);
+                    status.textContent = 'Error uploading file. Please try again.';
+                },
+                function() {
+                    // Once the upload is complete, get the download URL
+                    getDownloadURL(uploadTask.snapshot.ref).then(function(downloadURL) {
+                        console.log('File available at', downloadURL); // File URL after upload
+                        status.textContent = 'File uploaded successfully! URL: ' + downloadURL;
+                    });
+                }
+            );
         });
     </script>
 </body>
