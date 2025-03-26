@@ -25,19 +25,20 @@
         }
     </style>
 </head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>File Upload</title>
-    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-storage.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js"></script>
-</head>
 <body>
     <h1>Upload Your File</h1>
     <form id="upload-form">
         <input type="file" id="file-input" required>
         <button type="submit">Upload File</button>
     </form>
+
+    <!-- Progress Bar Container -->
+    <div id="progress-bar-container">
+        <div id="progress-bar"></div>
+    </div>
+    
+    <!-- Status Message -->
+    <div id="status"></div>
 
     <script>
         // Firebase configuration
@@ -63,17 +64,27 @@
                 const storageRef = storage.ref('uploads/' + file.name); // Create a reference to the file location
                 const uploadTask = storageRef.put(file); // Upload the file
 
+                // Get references to the progress bar and status
+                const progressBar = document.getElementById('progress-bar');
+                const status = document.getElementById('status');
+
+                // Monitor upload progress
                 uploadTask.on('state_changed', 
                     function(snapshot) {
-                        // Track upload progress (optional)
+                        // Calculate the percentage of upload progress
+                        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                        progressBar.style.width = progress + '%'; // Update the progress bar width
+                        status.textContent = 'Uploading: ' + Math.round(progress) + '%'; // Update status text
                     },
                     function(error) {
                         console.error("Error uploading file: ", error);
+                        status.textContent = 'Error uploading file. Please try again.';
                     },
                     function() {
+                        // Once the upload is complete, get the download URL
                         uploadTask.snapshot.ref.getDownloadURL().then(function(downloadURL) {
                             console.log('File available at', downloadURL); // File URL after upload
-                            alert("File uploaded successfully!");
+                            status.textContent = 'File uploaded successfully! URL: ' + downloadURL;
                         });
                     }
                 );
