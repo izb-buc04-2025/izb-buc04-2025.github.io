@@ -4,9 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>File Upload with Progress</title>
-    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-storage.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js"></script>
+    <script type="module">
+        // Import the required Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js";
+        import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-storage.js";
+    </script>
     <style>
         #progress-bar-container {
             width: 100%;
@@ -26,7 +28,7 @@
     </style>
 </head>
 <body>
-    <h1>Upload Your File 12345</h1>
+    <h1>Upload Your File</h1>
     <form id="upload-form">
         <input type="file" id="file-input" required>
         <button type="submit">Upload File</button>
@@ -40,8 +42,8 @@
     <!-- Status Message -->
     <div id="status"></div>
 
-    <script>
-        // Firebase configuration
+    <script type="module">
+        // Firebase configuration (update with your Firebase project details)
         const firebaseConfig = {
             apiKey: "AIzaSyADzvt0GHQn2PhdRVGGgDdOLb_f9AzDQJw",
             authDomain: "izb-buc04-2025-22695.firebaseapp.com",
@@ -52,8 +54,8 @@
         };
 
         // Initialize Firebase
-        const app = firebase.initializeApp(firebaseConfig);
-        const storage = firebase.storage();
+        const app = initializeApp(firebaseConfig);
+        const storage = getStorage(app); // Get Firebase Storage reference
 
         // Upload form handler
         document.getElementById('upload-form').addEventListener('submit', function(event) {
@@ -61,17 +63,19 @@
 
             const file = document.getElementById('file-input').files[0];
             if (file) {
-                const storageRef = storage.ref('uploads/' + file.name); // Create a reference to the file location
-                const uploadTask = storageRef.put(file); // Upload the file
+                // Create a reference to the file in Firebase Storage
+                const storageRef = ref(storage, 'uploads/' + file.name);
+                
+                // Create the upload task
+                const uploadTask = uploadBytesResumable(storageRef, file);
 
-                // Get references to the progress bar and status
+                // Get references to the progress bar and status message
                 const progressBar = document.getElementById('progress-bar');
                 const status = document.getElementById('status');
 
                 // Monitor upload progress
                 uploadTask.on('state_changed', 
                     function(snapshot) {
-                        // Calculate the percentage of upload progress
                         const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
                         progressBar.style.width = progress + '%'; // Update the progress bar width
                         status.textContent = 'Uploading: ' + Math.round(progress) + '%'; // Update status text
@@ -82,7 +86,7 @@
                     },
                     function() {
                         // Once the upload is complete, get the download URL
-                        uploadTask.snapshot.ref.getDownloadURL().then(function(downloadURL) {
+                        getDownloadURL(uploadTask.snapshot.ref).then(function(downloadURL) {
                             console.log('File available at', downloadURL); // File URL after upload
                             status.textContent = 'File uploaded successfully! URL: ' + downloadURL;
                         });
