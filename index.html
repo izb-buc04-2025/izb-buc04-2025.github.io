@@ -1,11 +1,11 @@
-<!DOCTYPE html>
+     <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>File Upload with Progress</title>
     <script type="module">
-        // Import the required Firebase modules
+        // Import Firebase modules for v9+ (modular)
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js";
         import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-storage.js";
     </script>
@@ -28,7 +28,7 @@
     </style>
 </head>
 <body>
-    <h1>Upload Your File 123</h1>
+    <h1>Upload Your File</h1>
     <form id="upload-form">
         <input type="file" id="file-input" required>
         <button type="submit">Upload File</button>
@@ -43,7 +43,7 @@
     <div id="status"></div>
 
     <script type="module">
-        // Firebase configuration (update with your Firebase project details)
+        // Firebase configuration (replace with your Firebase config)
         const firebaseConfig = {
             apiKey: "AIzaSyADzvt0GHQn2PhdRVGGgDdOLb_f9AzDQJw",
             authDomain: "izb-buc04-2025-22695.firebaseapp.com",
@@ -55,11 +55,11 @@
 
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
-        const storage = getStorage(app); // Get Firebase Storage reference
+        const storage = getStorage(app);
 
         // Upload form handler
         document.getElementById('upload-form').addEventListener('submit', function(event) {
-            event.preventDefault();
+            event.preventDefault(); // Prevent page refresh on form submit
 
             const file = document.getElementById('file-input').files[0];
             if (file) {
