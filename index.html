@@ -1,9 +1,24 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>File Upload Page</title>
+    <style>
+        /* Style the progress bar */
+        #progress-container {
+            width: 100%;
+            background-color: #f3f3f3;
+            border: 1px solid #ddd;
+            height: 20px;
+            margin-top: 10px;
+        }
+        #progress-bar {
+            height: 100%;
+            width: 0;
+            background-color: #4caf50;
+        }
+    </style>
 </head>
 <body>
     <h1>Nahrávanie súborov</h1>
@@ -13,6 +28,11 @@
         <input type="file" id="file-input" />
         <button type="submit">Upload</button>
     </form>
+
+    <!-- Progress Bar -->
+    <div id="progress-container">
+        <div id="progress-bar"></div>
+    </div>
 
     <script>
         // Handle form submission
@@ -26,6 +46,9 @@
                 alert('Please select a file.');
                 return;
             }
+
+            // Show the progress bar
+            document.getElementById('progress-container').style.display = 'block';
 
             // Call the function to upload the file (we'll use Firebase for this)
             uploadFile(file);
@@ -41,7 +64,7 @@
                 storageBucket: "izb-buc04-2025-22695.firebasestorage.app",
                 messagingSenderId: "903792104813",
                 appId: "1:903792104813:web:db89dd83027b792662b664"
-            };
+ };
 
             // Initialize Firebase
             firebase.initializeApp(firebaseConfig);
@@ -52,16 +75,34 @@
             const fileRef = storageRef.child('uploads/' + file.name);
 
             // Upload the file
-            fileRef.put(file).then(function(snapshot) {
-                alert('File uploaded successfully!');
-            }).catch(function(error) {
-                console.error('Error uploading file:', error);
-                alert('Error uploading file. Please try again.');
-            });
+            const uploadTask = fileRef.put(file);
+
+            // Monitor upload progress
+            uploadTask.on('state_changed', 
+                function(snapshot) {
+                    // Get progress percentage
+                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                    // Update the progress bar
+                    document.getElementById('progress-bar').style.width = progress + '%';
+                }, 
+                function(error) {
+                    console.error('Error uploading file:', error);
+                    alert('Error uploading file. Please try again.');
+                }, 
+                function() {
+                    // Upload completed successfully
+                    alert('File uploaded successfully!');
+                    document.getElementById('progress-container').style.display = 'none'; // Hide progress bar
+                }
+            );
         }
     </script>
 
     <!-- Include Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-storage.js"></script>
+</body>
+</html>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-storage.js"></script>
 </body>
