@@ -43,7 +43,8 @@
                 return;
             }
 
-            const fileName = uploads/${Date.now()}-${file.name};
+            const fileName = uploads/$
+        {Date.now()}-${file.name};
             const storageRef = storage.ref(fileName);
             const uploadTask = storageRef.put(file);
 
