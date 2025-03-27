@@ -6,7 +6,7 @@
     <title>Upload & Delete Files</title>
 </head>
 <body>
-    <h2>Upload a File</h2>
+    <h2>Upload a File 123</h2>
     <input type="file" id="fileInput">
     <button id="uploadBtn">Upload</button>
     <p id="status"></p>
@@ -36,35 +36,34 @@
             document.getElementById("uploadBtn").addEventListener("click", uploadFile);
         });
 
-        async function uploadFile() {
-            const file = document.getElementById('fileInput').files[0];
-            if (!file) {
-                alert("Please select a file.");
-                return;
-            }
+       async function uploadFile() {
+    const file = document.getElementById('fileInput').files[0];
+    if (!file) {
+        alert("Please select a file.");
+        return;
+    }
 
-            const fileName = uploads/$
-        {Date.now()}-${file.name};
-            const storageRef = storage.ref(fileName);
-            const uploadTask = storageRef.put(file);
+    const fileName = uploads/${Date.now()}-${file.name};
+    const storageRef = storage.ref(fileName);
+    const uploadTask = storageRef.put(file);
 
-            uploadTask.on('state_changed',
-                snapshot => {
-                    let progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                    document.getElementById('status').innerText = Uploading: ${progress.toFixed(2)}%;
-                },
-                error => {
-                    alert("Upload failed: " + error.message);
-                },
-                async () => {
-                    const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
-                    document.getElementById('status').innerHTML = Upload complete! <a href="${downloadURL}" target="_blank">View File</a>;
-                    
-                    // Add file to list
-                    addFileToList(fileName, downloadURL);
-                }
-            );
+    uploadTask.on('state_changed',
+        snapshot => {
+            let progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            document.getElementById('status').innerText = Uploading: ${progress.toFixed(2)}%;
+        },
+        error => {
+            alert("Upload failed: " + error.message);
+        },
+        async () => {  // ERROR MIGHT BE HERE
+            const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
+            document.getElementById('status').innerHTML = Upload complete! <a href="${downloadURL}" target="_blank">View File</a>;
+            
+            // Add file to list
+            addFileToList(fileName, downloadURL);
         }
+    );
+}
 
         function addFileToList(fileName, fileURL) {
             const list = document.getElementById('fileList');
