@@ -3,47 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>File Upload with Progress</title>
-    <script type="module">
-        // Import Firebase modules for v9+ (modular)
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js";
-        import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-storage.js";
-    </script>
-    <style>
-        #progress-bar-container {
-            width: 100%;
-            background-color: #f3f3f3;
-            border-radius: 5px;
-            margin-top: 20px;
-        }
-        #progress-bar {
-            height: 20px;
-            width: 0;
-            background-color: #4caf50;
-            border-radius: 5px;
-        }
-        #status {
-            margin-top: 10px;
-        }
-    </style>
+    <title>Upload & Delete Files</title>
 </head>
 <body>
-    <h1>Upload Your File 12 34 56 78</h1>
-    <form id="upload-form">
-        <input type="file" id="file-input" required>
-        <button type="button" id="upload-button">Upload File</button> <!-- Changed button type to 'button' -->
-    </form>
+    <h2>Upload a File</h2>
+    <input type="file" id="fileInput">
+    <button onclick="uploadFile()">Upload</button>
+    <p id="status"></p>
+    <ul id="fileList"></ul>
 
-    <!-- Progress Bar Container -->
-    <div id="progress-bar-container">
-        <div id="progress-bar"></div>
-    </div>
-    
-    <!-- Status Message -->
-    <div id="status"></div>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-storage.js"></script>
 
-    <script type="module">
-        // Firebase configuration (replace with your Firebase config)
+    <script>
+        // Firebase Configuration (Replace with your own)
         const firebaseConfig = {
             apiKey: "AIzaSyADzvt0GHQn2PhdRVGGgDdOLb_f9AzDQJw",
             authDomain: "izb-buc04-2025-22695.firebaseapp.com",
@@ -51,58 +25,62 @@
             storageBucket: "izb-buc04-2025-22695.firebasestorage.app",
             messagingSenderId: "903792104813",
             appId: "1:903792104813:web:db89dd83027b792662b664",
-            measurementId: "G-2YFL2F9L7D"
         };
 
         // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const storage = getStorage(app);
+        firebase.initializeApp(firebaseConfig);
+        const storage = firebase.storage();
 
-        // Get the upload button and file input
-        const uploadButton = document.getElementById('upload-button');
-        const fileInput = document.getElementById('file-input');
-
-        // Listen for button click to start file upload
-        uploadButton.addEventListener('click', function(event) {
-            const file = fileInput.files[0];
+        // Function to upload files
+        async function uploadFile() {
+            const file = document.getElementById('fileInput').files[0];
             if (!file) {
-                alert("Please select a file to upload.");
+                alert("Please select a file.");
                 return;
             }
 
-            // Prevent form submission (no refresh)
-            event.preventDefault();
+            const fileName = Date.now() + "-" + file.name;  // Unique filename
+            const storageRef = storage.ref(uploads/${fileName});
+            const uploadTask = storageRef.put(file);
 
-            // Create a reference to the file in Firebase Storage
-            const storageRef = ref(storage, 'uploads/' + file.name);
-            
-            // Create the upload task
-            const uploadTask = uploadBytesResumable(storageRef, file);
-
-            // Get references to the progress bar and status message
-            const progressBar = document.getElementById('progress-bar');
-            const status = document.getElementById('status');
-
-            // Monitor upload progress
-            uploadTask.on('state_changed', 
-                function(snapshot) {
-                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                    progressBar.style.width = progress + '%'; // Update the progress bar width
-                    status.textContent = 'Uploading: ' + Math.round(progress) + '%'; // Update status text
+            uploadTask.on('state_changed',
+                snapshot => {
+                    let progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                    document.getElementById('status').innerText = Upload Progress: ${progress.toFixed(2)}%;
                 },
-                function(error) {
-                    console.error("Error uploading file: ", error);
-                    status.textContent = 'Error uploading file. Please try again.';
+                error => {
+                    alert("Upload failed: " + error.message);
                 },
-                function() {
-                    // Once the upload is complete, get the download URL
-                    getDownloadURL(uploadTask.snapshot.ref).then(function(downloadURL) {
-                        console.log('File available at', downloadURL); // File URL after upload
-                        status.textContent = 'File uploaded successfully! URL: ' + downloadURL;
-                    });
+                async () => {
+                    const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
+                    document.getElementById('status').innerHTML = Upload complete!;
+
+                    // Add file to list
+                    addFileToList(fileName, downloadURL);
                 }
             );
-        });
+        }
+
+        // Function to display uploaded files
+        function addFileToList(fileName, fileURL) {
+            const list = document.getElementById('fileList');
+            const listItem = document.createElement('li');
+            listItem.innerHTML = `<a href="${fileURL}" target="_blank">${fileName}</a>
+                                  <button onclick="deleteFile('${fileName}', this)">Delete</button>`;
+            list.appendChild(listItem);
+        }
+
+        // Function to delete files
+        function deleteFile(fileName, buttonElement) {
+            const storageRef = storage.ref(uploads/${fileName});
+            
+            storageRef.delete().then(() => {
+                alert("File deleted successfully!");
+                buttonElement.parentElement.remove(); // Remove file from list
+            }).catch(error => {
+                alert("Error deleting file: " + error.message);
+            });
+        }
     </script>
 </body>
 </html>
