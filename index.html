@@ -6,7 +6,7 @@
     <title>Upload & Delete Files</title>
 </head>
 <body>
-    <h2>Upload a File 123</h2>
+    <h2>Upload a File 12345</h2>
     <input type="file" id="fileInput">
     <button id="uploadBtn">Upload</button>
     <p id="status"></p>
@@ -43,7 +43,8 @@
         return;
     }
 
-    const fileName = uploads/${Date.now()}-${file.name};
+    const fileName = uploads/$
+{Date.now()}-${file.name};
     const storageRef = storage.ref(fileName);
     const uploadTask = storageRef.put(file);
 
