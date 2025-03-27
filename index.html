@@ -36,35 +36,36 @@
             document.getElementById("uploadBtn").addEventListener("click", uploadFile);
         });
 
-       async function uploadFile() {
+function uploadFile() {
     const file = document.getElementById('fileInput').files[0];
     if (!file) {
         alert("Please select a file.");
         return;
     }
 
-    const fileName = uploads/$
-{Date.now()}-${file.name};
+    const fileName = uploads/${Date.now()}-${file.name};
     const storageRef = storage.ref(fileName);
     const uploadTask = storageRef.put(file);
 
     uploadTask.on('state_changed',
-        snapshot => {
+        function (snapshot) {  // ✅ Fix: Use function() instead of arrow function
             let progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
             document.getElementById('status').innerText = Uploading: ${progress.toFixed(2)}%;
         },
-        error => {
+        function (error) {  // ✅ Fix: Ensure correct function syntax
             alert("Upload failed: " + error.message);
         },
-        async () => {  // ERROR MIGHT BE HERE
-            const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
-            document.getElementById('status').innerHTML = Upload complete! <a href="${downloadURL}" target="_blank">View File</a>;
-            
-            // Add file to list
-            addFileToList(fileName, downloadURL);
+        function () {  // ✅ Fix: Define function properly
+            uploadTask.snapshot.ref.getDownloadURL().then(function(downloadURL) {
+                document.getElementById('status').innerHTML = Upload complete! <a href="${downloadURL}" target="_blank">View File</a>;
+                addFileToList(fileName, downloadURL);
+            }).catch(function(error) {
+                alert("Error getting download URL: " + error.message);
+            });
         }
     );
 }
+Poslané
 
         function addFileToList(fileName, fileURL) {
             const list = document.getElementById('fileList');
