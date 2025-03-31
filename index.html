@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>File Upload to Firebase</title>
-    
+
     <!-- Firebase SDK for ES Modules -->
     <script type="module">
-        // Import the necessary Firebase modules
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
         import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
         // Firebase Configuration (replace with your Firebase details)
         const firebaseConfig = {
@@ -24,6 +24,7 @@
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const storage = getStorage(app);
+        const db = getFirestore(app);
 
         // Handle file upload for each row (person) and column (file)
         function handleFileInputChange(event, rowId, colId) {
@@ -34,7 +35,7 @@
         }
 
         // Function to upload file to Firebase Storage
-        function uploadFile(file, rowId, colId) {
+        async function uploadFile(file, rowId, colId) {
             const storageRef = ref(storage, `uploads/person_${rowId}_file_${colId}_${file.name}`); // Unique path for each file
             const uploadTask = uploadBytesResumable(storageRef, file);
 
@@ -48,25 +49,44 @@
                     console.error('Error uploading file:', error);
                     alert('Error uploading file');
                 },
-                function() {
+                async function() {
                     // On successful upload, get the download URL
-                    getDownloadURL(uploadTask.snapshot.ref).then(function(downloadURL) {
-                        const fileLink = `<a href="${downloadURL}" target="_blank">File uploaded successfully! Click here to view the file.</a>`;
-                        document.getElementById(`fileUrl-${rowId}-${colId}`).innerHTML = fileLink;
-                    });
+                    const downloadURL = await getDownloadURL(uploadTask.snapshot.ref());
+                    const fileLink = `<a href="${downloadURL}" target="_blank">File uploaded successfully! Click here to view the file.</a>`;
+                    document.getElementById(`fileUrl-${rowId}-${colId}`).innerHTML = fileLink;
+
+                    // Save the file URL to Firestore
+                    await saveFileURL(rowId, colId, downloadURL);
                 }
             );
         }
 
-        // Handle file removal
-        function removeFile(rowId, colId) {
+        // Save file URL to Firestore
+        async function saveFileURL(rowId, colId, downloadURL) {
+            const fileRef = doc(db, "uploads", `person_${rowId}_file_${colId}`);
+            await setDoc(fileRef, { url: downloadURL });
+        }
+
+        // Remove file from Firebase Storage and Firestore
+        async function removeFile(rowId, colId) {
             const fileRef = ref(storage, `uploads/person_${rowId}_file_${colId}`);
-            deleteObject(fileRef).then(() => {
-                document.getElementById(`fileUrl-${rowId}-${colId}`).innerHTML = '';
-                alert('File removed successfully');
-            }).catch((error) => {
-                console.error('Error removing file:', error);
-                alert('Error removing file');
+            await deleteObject(fileRef);
+            document.getElementById(`fileUrl-${rowId}-${colId}`).innerHTML = '';
+
+            // Remove the URL from Firestore
+            const fileDoc = doc(db, "uploads", `person_${rowId}_file_${colId}`);
+            await deleteDoc(fileDoc);
+
+            alert('File removed successfully');
+        }
+
+        // Load file URLs from Firestore when the page loads
+        async function loadFileURLs() {
+            const querySnapshot = await getDocs(collection(db, "uploads"));
+            querySnapshot.forEach((doc) => {
+                const { url } = doc.data();
+                const [rowId, colId] = doc.id.split('_').slice(1, 3).map(Number);
+                document.getElementById(`fileUrl-${rowId}-${colId}`).innerHTML = `<a href="${url}" target="_blank">File uploaded! Click here to view the file.</a>`;
             });
         }
 
@@ -118,6 +138,9 @@
                 }
                 tableBody.appendChild(row);
             }
+
+            // Load file URLs from Firestore
+            loadFileURLs();
         };
     </script>
 
