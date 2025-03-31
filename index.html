@@ -50,26 +50,29 @@
                 },
                 function() {
                     getDownloadURL(uploadTask.snapshot.ref).then(function(downloadURL) {
-                        // Save the file URL in Firestore
-                        setDoc(doc(db, "files", `file_${personId}_${column}`), { url: downloadURL })
-                            .then(() => {
-                                document.getElementById(`fileUrl_${personId}_${column}`).innerHTML = 
-                                    `<a href="${downloadURL}" target="_blank">File uploaded successfully! Click here to view.</a>`;
-                            }).catch(error => {
-                                console.error('Error saving file URL in Firestore:', error);
-                            });
+                        // Save the file URL and file name in Firestore
+                        setDoc(doc(db, "files", `file_${personId}_${column}`), { 
+                            url: downloadURL,
+                            fileName: file.name // Store the file name
+                        })
+                        .then(() => {
+                            document.getElementById(`fileUrl_${personId}_${column}`).innerHTML = 
+                                `<a href="${downloadURL}" target="_blank">File uploaded successfully! Click here to view.</a>`;
+                        }).catch(error => {
+                            console.error('Error saving file URL in Firestore:', error);
+                        });
                     });
                 }
             );
         }
 
         // Function to handle file removal
-        function removeFile(personId, column) {
-            const fileRef = ref(storage, `uploads/${personId}/file${column}`);
+        function removeFile(personId, column, fileName) {
+            const fileRef = ref(storage, `uploads/${personId}/file${column}/${fileName}`);
             deleteObject(fileRef).then(() => {
                 document.getElementById(`fileUrl_${personId}_${column}`).innerHTML = '';
                 // Also remove from Firestore
-                setDoc(doc(db, "files", `file_${personId}_${column}`), { url: "" })
+                setDoc(doc(db, "files", `file_${personId}_${column}`), { url: "", fileName: "" })
                     .catch(error => {
                         console.error('Error removing file URL in Firestore:', error);
                     });
@@ -102,6 +105,7 @@
                     getDoc(fileRef).then(docSnapshot => {
                         if (docSnapshot.exists()) {
                             const fileUrl = docSnapshot.data().url;
+                            const fileName = docSnapshot.data().fileName; // Retrieve file name
                             if (fileUrl) {
                                 document.getElementById(`fileUrl_${i}_${j}`).innerHTML = 
                                     `<a href="${fileUrl}" target="_blank">File uploaded successfully! Click here to view.</a>`;
@@ -121,7 +125,12 @@
                     // Attach removeFile functionality to remove buttons
                     const removeButton = document.getElementById(`removeFile_${i}_${j}`);
                     removeButton.addEventListener('click', function() {
-                        removeFile(i, j);
+                        const fileName = document.getElementById(`fileInput_${i}_${j}`).files[0]?.name;
+                        if (fileName) {
+                            removeFile(i, j, fileName);  // Pass file name to remove
+                        } else {
+                            console.error('No file selected to remove');
+                        }
                     });
                 }
 
@@ -204,7 +213,7 @@
             <!-- Loop through 22 people -->
             <script>
                 for (let i = 1; i <= 22; i++) {
-                    document.write(`
+                    document.write(`  
                         <tr>
                             <td>Person ${i}</td>
                             <td>
