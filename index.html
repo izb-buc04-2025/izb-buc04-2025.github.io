@@ -9,8 +9,9 @@
     <script type="module">
         // Import necessary Firebase modules
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
         import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
-        import { getFirestore, collection, addDoc, doc, getDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
         // Firebase Configuration (replace with your Firebase details)
         const firebaseConfig = {
@@ -24,11 +25,17 @@
 
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
         const storage = getStorage(app);
         const db = getFirestore(app);
 
+        // Sign in anonymously
+        signInAnonymously(auth).catch((error) => {
+            console.error("Error signing in anonymously:", error);
+        });
+
         // Function to handle file upload
-        async function uploadFile(personId, column, file) {
+        function uploadFile(personId, column, file) {
             const storageRef = ref(storage, `uploads/${personId}/file${column}/${file.name}`);
             const uploadTask = uploadBytesResumable(storageRef, file);
 
@@ -41,83 +48,68 @@
                     console.error('Error uploading file:', error);
                     alert('Error uploading file');
                 },
-                async function() {
-                    const downloadURL = await getDownloadURL(uploadTask.snapshot.ref());
-
-                    // Save the download URL to Firestore
-                    await setDoc(doc(db, "files", `${personId}_${column}`), {
-                        fileUrl: downloadURL
+                function() {
+                    getDownloadURL(uploadTask.snapshot.ref).then(function(downloadURL) {
+                        // Save the file URL in Firestore
+                        setDoc(doc(db, "files", `file_${personId}_${column}`), { url: downloadURL })
+                            .then(() => {
+                                document.getElementById(`fileUrl_${personId}_${column}`).innerHTML = 
+                                    `<a href="${downloadURL}" target="_blank">File uploaded successfully! Click here to view.</a>`;
+                            }).catch(error => {
+                                console.error('Error saving file URL in Firestore:', error);
+                            });
                     });
-
-                    document.getElementById(`fileUrl_${personId}_${column}`).innerHTML = 
-                        `<a href="${downloadURL}" target="_blank">File uploaded successfully! Click here to view.</a>`;
                 }
             );
         }
 
         // Function to handle file removal
-        async function removeFile(personId, column) {
-            const fileDocRef = doc(db, "files", `${personId}_${column}`);
-            const fileDoc = await getDoc(fileDocRef);
-
-            if (fileDoc.exists()) {
-                const fileUrl = fileDoc.data().fileUrl;
-                const fileRef = ref(storage, fileUrl);
-
-                // Delete file from Firebase Storage
-                deleteObject(fileRef).then(async () => {
-                    // Delete the file metadata from Firestore
-                    await deleteDoc(fileDocRef);
-
-                    // Update the UI and alert the user
-                    document.getElementById(`fileUrl_${personId}_${column}`).innerHTML = '';
-                    alert('File removed successfully!');
-                }).catch(error => {
-                    console.error('Error removing file:', error);
-                    alert('Error removing file');
-                });
-            } else {
-                alert('No file to remove');
-            }
+        function removeFile(personId, column) {
+            const fileRef = ref(storage, `uploads/${personId}/file${column}`);
+            deleteObject(fileRef).then(() => {
+                document.getElementById(`fileUrl_${personId}_${column}`).innerHTML = '';
+                // Also remove from Firestore
+                setDoc(doc(db, "files", `file_${personId}_${column}`), { url: "" })
+                    .catch(error => {
+                        console.error('Error removing file URL in Firestore:', error);
+                    });
+            }).catch(error => {
+                console.error('Error removing file:', error);
+                alert('Error removing file');
+            });
         }
 
         // Function to handle saving YouTube link
-        async function saveYouTubeLink(personId) {
+        function saveYouTubeLink(personId) {
             const youtubeLink = document.getElementById(`youtubeLink_${personId}`).value;
             if (youtubeLink) {
-                // Save to Firestore
-                await setDoc(doc(db, "youtubeLinks", `${personId}`), {
-                    youtubeLink: youtubeLink
-                });
-
-                alert('YouTube link saved!');
+                setDoc(doc(db, "youtubeLinks", `youtubeLink_${personId}`), { link: youtubeLink })
+                    .then(() => {
+                        alert('YouTube link saved!');
+                    }).catch(error => {
+                        console.error('Error saving YouTube link:', error);
+                    });
             } else {
                 alert('Please enter a YouTube link');
             }
         }
 
         // Function to populate saved data on page load
-        window.onload = async function() {
+        window.onload = function() {
             for (let i = 1; i <= 22; i++) {
                 for (let j = 1; j <= 3; j++) {
-                    const fileDocRef = doc(db, "files", `${i}_${j}`);
-                    const fileDoc = await getDoc(fileDocRef);
-                    if (fileDoc.exists()) {
-                        const fileUrl = fileDoc.data().fileUrl;
-                        document.getElementById(`fileUrl_${i}_${j}`).innerHTML = 
-                            `<a href="${fileUrl}" target="_blank">File uploaded successfully! Click here to view.</a>`;
-                    }
-                }
+                    const fileRef = doc(db, "files", `file_${i}_${j}`);
+                    getDoc(fileRef).then(docSnapshot => {
+                        if (docSnapshot.exists()) {
+                            const fileUrl = docSnapshot.data().url;
+                            if (fileUrl) {
+                                document.getElementById(`fileUrl_${i}_${j}`).innerHTML = 
+                                    `<a href="${fileUrl}" target="_blank">File uploaded successfully! Click here to view.</a>`;
+                            }
+                        }
+                    });
 
-                const youtubeLinkDocRef = doc(db, "youtubeLinks", `${i}`);
-                const youtubeLinkDoc = await getDoc(youtubeLinkDocRef);
-                if (youtubeLinkDoc.exists()) {
-                    const youtubeLink = youtubeLinkDoc.data().youtubeLink;
-                    document.getElementById(`youtubeLink_${i}`).value = youtubeLink;
-                }
-
-                // Attach file input change events dynamically
-                for (let j = 1; j <= 3; j++) {
+                    // Attach file input change events dynamically
                     const inputElement = document.getElementById(`fileInput_${i}_${j}`);
                     inputElement.addEventListener('change', function(event) {
                         const file = event.target.files[0];
@@ -125,13 +117,11 @@
                             uploadFile(i, j, file);
                         }
                     });
-                }
 
-                // Attach removeFile functionality to remove buttons
-                for (let j = 1; j <= 3; j++) {
+                    // Attach removeFile functionality to remove buttons
                     const removeButton = document.getElementById(`removeFile_${i}_${j}`);
                     removeButton.addEventListener('click', function() {
-                        removeFile(i, j);  // Call removeFile with the correct personId and column
+                        removeFile(i, j);
                     });
                 }
 
@@ -139,6 +129,16 @@
                 const youtubeLinkButton = document.getElementById(`saveYouTubeLink_${i}`);
                 youtubeLinkButton.addEventListener('click', function() {
                     saveYouTubeLink(i);
+                });
+
+                const youtubeLinkRef = doc(db, "youtubeLinks", `youtubeLink_${i}`);
+                getDoc(youtubeLinkRef).then(docSnapshot => {
+                    if (docSnapshot.exists()) {
+                        const youtubeLink = docSnapshot.data().link;
+                        if (youtubeLink) {
+                            document.getElementById(`youtubeLink_${i}`).value = youtubeLink;
+                        }
+                    }
                 });
             }
         }
@@ -235,8 +235,8 @@
                                 <button id="removeFile_${i}_3">Remove File</button>
                             </td>
                             <td>
-                                <input type="text" id="youtubeLink_${i}" placeholder="Enter YouTube Link">
-                                <button id="saveYouTubeLink_${i}">Save YouTube Link</button>
+                                <input type="text" id="youtubeLink_${i}" placeholder="Enter YouTube link">
+                                <button id="saveYouTubeLink_${i}">Save Link</button>
                             </td>
                         </tr>
                     `);
