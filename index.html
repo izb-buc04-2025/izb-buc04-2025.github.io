@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>File Upload to Firebase 123</title>
+    <title>File Upload to Firebase</title>
     
     <!-- Firebase SDK for ES Modules -->
     <script type="module">
         // Import the necessary Firebase modules
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-        import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
+        import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
 
         // Firebase Configuration (replace with your Firebase details)
         const firebaseConfig = {
@@ -25,29 +25,24 @@
         const app = initializeApp(firebaseConfig);
         const storage = getStorage(app);
 
-        // Trigger file input on button click
-        document.getElementById('uploadButton').addEventListener('click', function() {
-            document.getElementById('fileInput').click();
-        });
-
-        // When the file is selected
-        document.getElementById('fileInput').addEventListener('change', function(event) {
+        // Handle file upload for each row (person) and column (file)
+        function handleFileInputChange(event, rowId, colId) {
             const file = event.target.files[0];
             if (file) {
-                uploadFile(file);
+                uploadFile(file, rowId, colId);
             }
-        });
+        }
 
         // Function to upload file to Firebase Storage
-        function uploadFile(file) {
-            const storageRef = ref(storage, 'uploads/' + file.name); // Path in Firebase Storage
+        function uploadFile(file, rowId, colId) {
+            const storageRef = ref(storage, `uploads/person_${rowId}_file_${colId}_${file.name}`); // Unique path for each file
             const uploadTask = uploadBytesResumable(storageRef, file);
 
             // Monitor the upload progress
             uploadTask.on('state_changed', 
                 function(snapshot) {
                     const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                    document.getElementById('progress').style.width = progress + '%';
+                    document.getElementById(`progress-${rowId}-${colId}`).style.width = progress + '%';
                 }, 
                 function(error) {
                     console.error('Error uploading file:', error);
@@ -56,26 +51,40 @@
                 function() {
                     // On successful upload, get the download URL
                     getDownloadURL(uploadTask.snapshot.ref).then(function(downloadURL) {
-                        document.getElementById('fileUrl').innerHTML = `<a href="${downloadURL}" target="_blank">File uploaded successfully! Click here to view the file.</a>`;
+                        const fileLink = `<a href="${downloadURL}" target="_blank">File uploaded successfully! Click here to view the file.</a>`;
+                        document.getElementById(`fileUrl-${rowId}-${colId}`).innerHTML = fileLink;
                     });
                 }
             );
+        }
+
+        // Handle file removal
+        function removeFile(rowId, colId) {
+            const fileRef = ref(storage, `uploads/person_${rowId}_file_${colId}`);
+            deleteObject(fileRef).then(() => {
+                document.getElementById(`fileUrl-${rowId}-${colId}`).innerHTML = '';
+                alert('File removed successfully');
+            }).catch((error) => {
+                console.error('Error removing file:', error);
+                alert('Error removing file');
+            });
         }
     </script>
 
     <style>
         body {
             font-family: Arial, sans-serif;
+            padding: 20px;
             text-align: center;
-            padding: 50px;
         }
-        #uploadButton {
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
+        table {
+            width: 100%;
+            margin: 20px auto;
+            border-collapse: collapse;
         }
-        #fileInput {
-            display: none;
+        th, td {
+            padding: 10px;
+            border: 1px solid #ddd;
         }
         .progress-bar {
             width: 100%;
@@ -90,17 +99,47 @@
             width: 0%;
             border-radius: 5px;
         }
+        .upload-cell {
+            text-align: center;
+        }
     </style>
 </head>
 <body>
-    <h1>Upload Files to Firebase</h1>
-    <button id="uploadButton">Upload File</button>
-    <input type="file" id="fileInput" />
+    <h1>File Upload Table</h1>
     
-    <div class="progress-bar">
-        <div class="progress" id="progress"></div>
-    </div>
-    
-    <div id="fileUrl"></div>
+    <!-- Table for 22 people and 4 upload columns -->
+    <table>
+        <thead>
+            <tr>
+                <th>Person</th>
+                <th>File 1</th>
+                <th>File 2</th>
+                <th>File 3</th>
+                <th>File 4</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Loop through 22 people (rows) -->
+            <script>
+                for (let i = 1; i <= 22; i++) {
+                    document.write('<tr>');
+                    document.write(`<td>Person ${i}</td>`);
+                    for (let j = 1; j <= 4; j++) {
+                        document.write(`
+                            <td class="upload-cell">
+                                <input type="file" id="fileInput-${i}-${j}" onchange="handleFileInputChange(event, ${i}, ${j})">
+                                <div class="progress-bar">
+                                    <div class="progress" id="progress-${i}-${j}"></div>
+                                </div>
+                                <div id="fileUrl-${i}-${j}"></div>
+                                <button onclick="removeFile(${i}, ${j})">Remove</button>
+                            </td>
+                        `);
+                    }
+                    document.write('</tr>');
+                }
+            </script>
+        </tbody>
+    </table>
 </body>
 </html>
