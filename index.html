@@ -85,6 +85,17 @@
                 if (youtubeLink) {
                     document.getElementById(`youtubeLink_${i}`).value = youtubeLink;
                 }
+
+                // Attach file input change events dynamically
+                for (let j = 1; j <= 3; j++) {
+                    const inputElement = document.getElementById(`fileInput_${i}_${j}`);
+                    inputElement.addEventListener('change', function(event) {
+                        const file = event.target.files[0];
+                        if (file) {
+                            uploadFile(i, j, file);
+                        }
+                    });
+                }
             }
         }
     </script>
@@ -154,7 +165,7 @@
                             <td>Person ${i}</td>
                             <td>
                                 <button onclick="document.getElementById('fileInput_${i}_1').click();">Upload File 1</button>
-                                <input type="file" id="fileInput_${i}_1" onchange="uploadFile(${i}, 1, this.files[0])">
+                                <input type="file" id="fileInput_${i}_1">
                                 <div class="progress-bar">
                                     <div class="progress" id="progress_${i}_1"></div>
                                 </div>
@@ -163,7 +174,7 @@
                             </td>
                             <td>
                                 <button onclick="document.getElementById('fileInput_${i}_2').click();">Upload File 2</button>
-                                <input type="file" id="fileInput_${i}_2" onchange="uploadFile(${i}, 2, this.files[0])">
+                                <input type="file" id="fileInput_${i}_2">
                                 <div class="progress-bar">
                                     <div class="progress" id="progress_${i}_2"></div>
                                 </div>
@@ -172,7 +183,7 @@
                             </td>
                             <td>
                                 <button onclick="document.getElementById('fileInput_${i}_3').click();">Upload File 3</button>
-                                <input type="file" id="fileInput_${i}_3" onchange="uploadFile(${i}, 3, this.files[0])">
+                                <input type="file" id="fileInput_${i}_3">
                                 <div class="progress-bar">
                                     <div class="progress" id="progress_${i}_3"></div>
                                 </div>
