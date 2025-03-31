@@ -5,13 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>File Upload and YouTube Link Storage</title>
 
-    <!-- Firebase SDK for ES Modules -->
     <script type="module">
         // Import necessary Firebase modules
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-        import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
+        import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
+        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
-        // Firebase Configuration (replace with your Firebase details)
         const firebaseConfig = {
             apiKey: "AIzaSyADzvt0GHQn2PhdRVGGgDdOLb_f9AzDQJw",
             authDomain: "izb-buc04-2025-22695.firebaseapp.com",
@@ -21,12 +20,12 @@
             appId: "1:903792104813:web:db89dd83027b792662b664",
         };
 
-        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const storage = getStorage(app);
+        const db = getFirestore(app); // Initialize Firestore
 
-        // Function to handle file upload
-        function uploadFile(personId, column, file) {
+        // Upload file and save URL to Firestore
+        async function uploadFile(personId, column, file) {
             const storageRef = ref(storage, `uploads/${personId}/file${column}/${file.name}`);
             const uploadTask = uploadBytesResumable(storageRef, file);
 
@@ -39,144 +38,64 @@
                     console.error('Error uploading file:', error);
                     alert('Error uploading file');
                 },
-                function() {
-                    getDownloadURL(uploadTask.snapshot.ref).then(function(downloadURL) {
-                        document.getElementById(`fileUrl_${personId}_${column}`).innerHTML = 
-                            `<a href="${downloadURL}" target="_blank">File uploaded successfully! Click here to view.</a>`;
-                        localStorage.setItem(`file_${personId}_${column}`, downloadURL); // Save to localStorage for persistence
+                async function() {
+                    const downloadURL = await getDownloadURL(uploadTask.snapshot.ref());
+                    document.getElementById(`fileUrl_${personId}_${column}`).innerHTML = 
+                        `<a href="${downloadURL}" target="_blank">File uploaded successfully! Click here to view.</a>`;
+
+                    // Save file URL to Firestore
+                    await setDoc(doc(db, "uploads", `${personId}_file${column}`), {
+                        fileUrl: downloadURL
                     });
+
+                    console.log("File URL saved to Firestore");
                 }
             );
         }
 
-        // Function to handle file removal
-        function removeFile(personId, column) {
-            const fileUrl = localStorage.getItem(`file_${personId}_${column}`);
-            if (fileUrl) {
-                const fileRef = ref(storage, fileUrl);
-                deleteObject(fileRef).then(() => {
-                    document.getElementById(`fileUrl_${personId}_${column}`).innerHTML = '';
-                    localStorage.removeItem(`file_${personId}_${column}`);
-                }).catch(error => {
-                    console.error('Error removing file:', error);
-                    alert('Error removing file');
-                });
-            }
-        }
-
-        // Function to handle saving YouTube link
-        function saveYouTubeLink(personId) {
+        // Save YouTube link to Firestore
+        async function saveYouTubeLink(personId) {
             const youtubeLink = document.getElementById(`youtubeLink_${personId}`).value;
             if (youtubeLink) {
-                localStorage.setItem(`youtubeLink_${personId}`, youtubeLink);  // Save to localStorage for persistence
+                await setDoc(doc(db, "youtubeLinks", `${personId}`), {
+                    youtubeLink: youtubeLink
+                });
+
                 alert('YouTube link saved!');
             } else {
                 alert('Please enter a YouTube link');
             }
         }
 
-        // Function to handle deleting YouTube link
-        function deleteYouTubeLink(personId) {
-            localStorage.removeItem(`youtubeLink_${personId}`);
-            document.getElementById(`youtubeLink_${personId}`).value = '';
-            alert('YouTube link deleted!');
-        }
-
-        // Function to populate saved data on page load
-        window.onload = function() {
+        // Load saved data from Firestore
+        async function loadData() {
             for (let i = 1; i <= 22; i++) {
                 for (let j = 1; j <= 3; j++) {
-                    const fileUrl = localStorage.getItem(`file_${i}_${j}`);
-                    if (fileUrl) {
+                    const fileDoc = await getDoc(doc(db, "uploads", `${i}_file${j}`));
+                    if (fileDoc.exists()) {
+                        const fileUrl = fileDoc.data().fileUrl;
                         document.getElementById(`fileUrl_${i}_${j}`).innerHTML = 
                             `<a href="${fileUrl}" target="_blank">File uploaded successfully! Click here to view.</a>`;
                     }
                 }
-                const youtubeLink = localStorage.getItem(`youtubeLink_${i}`);
-                if (youtubeLink) {
+
+                const youtubeDoc = await getDoc(doc(db, "youtubeLinks", `${i}`));
+                if (youtubeDoc.exists()) {
+                    const youtubeLink = youtubeDoc.data().youtubeLink;
                     document.getElementById(`youtubeLink_${i}`).value = youtubeLink;
                 }
-
-                // Attach file input change events dynamically
-                for (let j = 1; j <= 3; j++) {
-                    const inputElement = document.getElementById(`fileInput_${i}_${j}`);
-                    inputElement.addEventListener('change', function(event) {
-                        const file = event.target.files[0];
-                        if (file) {
-                            uploadFile(i, j, file);
-                        }
-                    });
-                }
-
-                // Attach removeFile functionality to remove buttons
-                for (let j = 1; j <= 3; j++) {
-                    const removeButton = document.getElementById(`removeFile_${i}_${j}`);
-                    removeButton.addEventListener('click', function() {
-                        removeFile(i, j);
-                    });
-                }
-
-                // Attach saveYouTubeLink functionality
-                const youtubeLinkButton = document.getElementById(`saveYouTubeLink_${i}`);
-                youtubeLinkButton.addEventListener('click', function() {
-                    saveYouTubeLink(i);
-                });
-
-                // Attach deleteYouTubeLink functionality
-                const deleteYouTubeLinkButton = document.getElementById(`deleteYouTubeLink_${i}`);
-                deleteYouTubeLinkButton.addEventListener('click', function() {
-                    deleteYouTubeLink(i);
-                });
             }
         }
+
+        window.onload = loadData;
     </script>
 
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            padding: 20px;
-        }
-        table {
-            width: 80%;
-            margin: 0 auto;
-            border-collapse: collapse;
-        }
-        th, td {
-            padding: 10px;
-            border: 1px solid #ddd;
-            text-align: center;
-        }
-        input[type="file"] {
-            display: none;
-        }
-        .progress-bar {
-            width: 100%;
-            height: 20px;
-            background-color: #f3f3f3;
-            margin-top: 5px;
-            border-radius: 5px;
-        }
-        .progress {
-            height: 100%;
-            background-color: #4caf50;
-            width: 0%;
-            border-radius: 5px;
-        }
-        button {
-            padding: 5px 10px;
-            margin-top: 10px;
-        }
-        input[type="text"] {
-            width: 90%;
-            padding: 5px;
-        }
+        /* Your existing CSS code */
     </style>
 </head>
 <body>
-
     <h1>Upload Files and Save YouTube Links</h1>
-
     <table>
         <thead>
             <tr>
@@ -188,7 +107,7 @@
             </tr>
         </thead>
         <tbody>
-            <!-- Loop through 22 people -->
+            <!-- Dynamic rows for 22 people -->
             <script>
                 for (let i = 1; i <= 22; i++) {
                     document.write(`
@@ -201,7 +120,6 @@
                                     <div class="progress" id="progress_${i}_1"></div>
                                 </div>
                                 <div id="fileUrl_${i}_1"></div>
-                                <button id="removeFile_${i}_1">Remove File</button>
                             </td>
                             <td>
                                 <button onclick="document.getElementById('fileInput_${i}_2').click();">Upload File 2</button>
@@ -210,7 +128,6 @@
                                     <div class="progress" id="progress_${i}_2"></div>
                                 </div>
                                 <div id="fileUrl_${i}_2"></div>
-                                <button id="removeFile_${i}_2">Remove File</button>
                             </td>
                             <td>
                                 <button onclick="document.getElementById('fileInput_${i}_3').click();">Upload File 3</button>
@@ -219,12 +136,10 @@
                                     <div class="progress" id="progress_${i}_3"></div>
                                 </div>
                                 <div id="fileUrl_${i}_3"></div>
-                                <button id="removeFile_${i}_3">Remove File</button>
                             </td>
                             <td>
                                 <input type="text" id="youtubeLink_${i}" placeholder="Enter YouTube Link">
-                                <button id="saveYouTubeLink_${i}">Save YouTube Link</button>
-                                <button id="deleteYouTubeLink_${i}">Delete YouTube Link</button>
+                                <button onclick="saveYouTubeLink(${i})">Save YouTube Link</button>
                             </td>
                         </tr>
                     `);
