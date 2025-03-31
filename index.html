@@ -10,7 +10,6 @@
         // Import necessary Firebase modules
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
         import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
-        import { getFirestore, doc, setDoc, getDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
         // Firebase Configuration (replace with your Firebase details)
         const firebaseConfig = {
@@ -25,7 +24,6 @@
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const storage = getStorage(app);
-        const firestore = getFirestore(app);
 
         // Function to handle file upload
         function uploadFile(personId, column, file) {
@@ -43,15 +41,9 @@
                 },
                 function() {
                     getDownloadURL(uploadTask.snapshot.ref).then(function(downloadURL) {
-                        // Display the download link to the user
                         document.getElementById(`fileUrl_${personId}_${column}`).innerHTML = 
                             `<a href="${downloadURL}" target="_blank">File uploaded successfully! Click here to view.</a>`;
-                        
-                        // Save the file URL to localStorage for persistence
-                        localStorage.setItem(`file_${personId}_${column}`, downloadURL);
-
-                        // Save the file URL to Firestore
-                        saveFileUrlToFirestore(personId, column, downloadURL);
+                        localStorage.setItem(`file_${personId}_${column}`, downloadURL); // Save to localStorage for persistence
                     });
                 }
             );
@@ -60,58 +52,30 @@
         // Function to handle file removal
         function removeFile(personId, column) {
             const fileUrl = localStorage.getItem(`file_${personId}_${column}`);
-            
             if (fileUrl) {
-                const storagePath = fileUrl.split('?')[0].split('/')[7];  // Get the file path from URL
-                const fileRef = ref(storage, `uploads/${personId}/file${column}/${storagePath}`); // Correct file reference for deletion
-                
+                const fileRef = ref(storage, fileUrl);
                 deleteObject(fileRef).then(() => {
                     document.getElementById(`fileUrl_${personId}_${column}`).innerHTML = '';
                     localStorage.removeItem(`file_${personId}_${column}`);
-                    
-                    // Remove the file URL from Firestore as well
-                    removeFileFromFirestore(personId, column);
+                    alert("File removed successfully!");
                 }).catch(error => {
                     console.error('Error removing file:', error);
                     alert('Error removing file');
                 });
             } else {
-                console.log('No file URL found in localStorage');
+                alert('No file to remove');
             }
         }
 
-        // Function to save file URL to Firestore
-        async function saveFileUrlToFirestore(personId, column, downloadURL) {
-            const fileDocRef = doc(firestore, `uploads/${personId}/file${column}`);
-            await setDoc(fileDocRef, {
-                url: downloadURL
-            }, { merge: true });
-        }
-
-        // Function to remove file URL from Firestore
-        async function removeFileFromFirestore(personId, column) {
-            const fileDocRef = doc(firestore, `uploads/${personId}/file${column}`);
-            await deleteDoc(fileDocRef);
-        }
-
-        // Function to save YouTube link
+        // Function to handle saving YouTube link
         function saveYouTubeLink(personId) {
             const youtubeLink = document.getElementById(`youtubeLink_${personId}`).value;
             if (youtubeLink) {
                 localStorage.setItem(`youtubeLink_${personId}`, youtubeLink);  // Save to localStorage for persistence
                 alert('YouTube link saved!');
-                
-                // Save the YouTube link to Firestore as well
-                saveYouTubeLinkToFirestore(personId, youtubeLink);
             } else {
                 alert('Please enter a YouTube link');
             }
-        }
-
-        // Function to save YouTube link to Firestore
-        async function saveYouTubeLinkToFirestore(personId, youtubeLink) {
-            const youtubeDocRef = doc(firestore, `youtubeLinks/${personId}`);
-            await setDoc(youtubeDocRef, { link: youtubeLink });
         }
 
         // Function to populate saved data on page load
@@ -144,7 +108,7 @@
                 for (let j = 1; j <= 3; j++) {
                     const removeButton = document.getElementById(`removeFile_${i}_${j}`);
                     removeButton.addEventListener('click', function() {
-                        removeFile(i, j);
+                        removeFile(i, j);  // Call removeFile with the correct personId and column
                     });
                 }
 
@@ -214,44 +178,45 @@
             </tr>
         </thead>
         <tbody>
-            <!-- Generate rows for each person -->
+            <!-- Loop through 22 people -->
             <script>
                 for (let i = 1; i <= 22; i++) {
-                    let row = `<tr>
-                        <td>Person ${i}</td>
-                        <td>
-                            <input type="file" id="fileInput_${i}_1">
-                            <button onclick="document.getElementById('fileInput_${i}_1').click();">Upload File</button>
-                            <div id="fileUrl_${i}_1"></div>
-                            <button id="removeFile_${i}_1">Remove</button>
-                            <div class="progress-bar">
-                                <div class="progress" id="progress_${i}_1"></div>
-                            </div>
-                        </td>
-                        <td>
-                            <input type="file" id="fileInput_${i}_2">
-                            <button onclick="document.getElementById('fileInput_${i}_2').click();">Upload File</button>
-                            <div id="fileUrl_${i}_2"></div>
-                            <button id="removeFile_${i}_2">Remove</button>
-                            <div class="progress-bar">
-                                <div class="progress" id="progress_${i}_2"></div>
-                            </div>
-                        </td>
-                        <td>
-                            <input type="file" id="fileInput_${i}_3">
-                            <button onclick="document.getElementById('fileInput_${i}_3').click();">Upload File</button>
-                            <div id="fileUrl_${i}_3"></div>
-                            <button id="removeFile_${i}_3">Remove</button>
-                            <div class="progress-bar">
-                                <div class="progress" id="progress_${i}_3"></div>
-                            </div>
-                        </td>
-                        <td>
-                            <input type="text" id="youtubeLink_${i}" placeholder="Enter YouTube Link">
-                            <button id="saveYouTubeLink_${i}">Save YouTube Link</button>
-                        </td>
-                    </tr>`;
-                    document.querySelector('tbody').innerHTML += row;
+                    document.write(`
+                        <tr>
+                            <td>Person ${i}</td>
+                            <td>
+                                <button onclick="document.getElementById('fileInput_${i}_1').click();">Upload File 1</button>
+                                <input type="file" id="fileInput_${i}_1">
+                                <div class="progress-bar">
+                                    <div class="progress" id="progress_${i}_1"></div>
+                                </div>
+                                <div id="fileUrl_${i}_1"></div>
+                                <button id="removeFile_${i}_1">Remove File</button>
+                            </td>
+                            <td>
+                                <button onclick="document.getElementById('fileInput_${i}_2').click();">Upload File 2</button>
+                                <input type="file" id="fileInput_${i}_2">
+                                <div class="progress-bar">
+                                    <div class="progress" id="progress_${i}_2"></div>
+                                </div>
+                                <div id="fileUrl_${i}_2"></div>
+                                <button id="removeFile_${i}_2">Remove File</button>
+                            </td>
+                            <td>
+                                <button onclick="document.getElementById('fileInput_${i}_3').click();">Upload File 3</button>
+                                <input type="file" id="fileInput_${i}_3">
+                                <div class="progress-bar">
+                                    <div class="progress" id="progress_${i}_3"></div>
+                                </div>
+                                <div id="fileUrl_${i}_3"></div>
+                                <button id="removeFile_${i}_3">Remove File</button>
+                            </td>
+                            <td>
+                                <input type="text" id="youtubeLink_${i}" placeholder="Enter YouTube Link">
+                                <button id="saveYouTubeLink_${i}">Save YouTube Link</button>
+                            </td>
+                        </tr>
+                    `);
                 }
             </script>
         </tbody>
