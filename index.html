@@ -5,9 +5,63 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>File Upload to Firebase</title>
     
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js"></script>
+    <!-- Firebase SDK for ES Modules -->
+    <script type="module">
+        // Import the necessary Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+        import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
+
+        // Firebase Configuration (replace with your Firebase details)
+        const firebaseConfig = {
+            apiKey: "AIzaSyADzvt0GHQn2PhdRVGGgDdOLb_f9AzDQJw",
+            authDomain: "izb-buc04-2025-22695.firebaseapp.com",
+            projectId: "izb-buc04-2025-22695",
+            storageBucket: "izb-buc04-2025-22695.firebasestorage.app",
+            messagingSenderId: "903792104813",
+            appId: "1:903792104813:web:db89dd83027b792662b664",
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const storage = getStorage(app);
+
+        // Trigger file input on button click
+        document.getElementById('uploadButton').addEventListener('click', function() {
+            document.getElementById('fileInput').click();
+        });
+
+        // When the file is selected
+        document.getElementById('fileInput').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                uploadFile(file);
+            }
+        });
+
+        // Function to upload file to Firebase Storage
+        function uploadFile(file) {
+            const storageRef = ref(storage, 'uploads/' + file.name); // Path in Firebase Storage
+            const uploadTask = uploadBytesResumable(storageRef, file);
+
+            // Monitor the upload progress
+            uploadTask.on('state_changed', 
+                function(snapshot) {
+                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                    document.getElementById('progress').style.width = progress + '%';
+                }, 
+                function(error) {
+                    console.error('Error uploading file:', error);
+                    alert('Error uploading file');
+                },
+                function() {
+                    // On successful upload, get the download URL
+                    getDownloadURL(uploadTask.snapshot.ref).then(function(downloadURL) {
+                        document.getElementById('fileUrl').innerHTML = `<a href="${downloadURL}" target="_blank">File uploaded successfully! Click here to view the file.</a>`;
+                    });
+                }
+            );
+        }
+    </script>
 
     <style>
         body {
@@ -48,58 +102,5 @@
     </div>
     
     <div id="fileUrl"></div>
-
-    <script>
-        // Your Firebase Config (replace these with your actual Firebase config details)
-        const firebaseConfig = {
-            apiKey: "AIzaSyADzvt0GHQn2PhdRVGGgDdOLb_f9AzDQJw",
-            authDomain: "izb-buc04-2025-22695.firebaseapp.com",
-            projectId: "izb-buc04-2025-22695",
-            storageBucket: "izb-buc04-2025-22695.firebasestorage.app",
-            messagingSenderId: "903792104813",
-            appId: "1:903792104813:web:db89dd83027b792662b664",
-        };
-        
-        // Initialize Firebase
-        const app = firebase.initializeApp(firebaseConfig);
-        const storage = firebase.storage();
-
-        // Trigger file input on button click
-        document.getElementById('uploadButton').addEventListener('click', function() {
-            document.getElementById('fileInput').click();
-        });
-
-        // When the file is selected
-        document.getElementById('fileInput').addEventListener('change', function(event) {
-            const file = event.target.files[0];
-            if (file) {
-                uploadFile(file);
-            }
-        });
-
-        // Function to upload file to Firebase Storage
-        function uploadFile(file) {
-            const storageRef = storage.ref('uploads/' + file.name); // Path in Firebase Storage
-            const uploadTask = storageRef.put(file);
-
-            // Monitor the upload progress
-            uploadTask.on('state_changed', 
-                function(snapshot) {
-                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                    document.getElementById('progress').style.width = progress + '%';
-                }, 
-                function(error) {
-                    console.error('Error uploading file:', error);
-                    alert('Error uploading file');
-                },
-                function() {
-                    // On successful upload, get the download URL
-                    uploadTask.snapshot.ref.getDownloadURL().then(function(downloadURL) {
-                        document.getElementById('fileUrl').innerHTML = `<a href="${downloadURL}" target="_blank">File uploaded successfully! Click here to view the file.</a>`;
-                    });
-                }
-            );
-        }
-    </script>
 </body>
 </html>
