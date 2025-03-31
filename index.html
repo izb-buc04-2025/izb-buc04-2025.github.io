@@ -96,6 +96,14 @@
                         }
                     });
                 }
+
+                // Attach removeFile functionality to remove buttons
+                for (let j = 1; j <= 3; j++) {
+                    const removeButton = document.getElementById(`removeFile_${i}_${j}`);
+                    removeButton.addEventListener('click', function() {
+                        removeFile(i, j);
+                    });
+                }
             }
         }
     </script>
@@ -144,7 +152,7 @@
 </head>
 <body>
 
-    <h1>Upload Files and Save YouTube Links</h1>
+    <h1>Upload Files and Save YouTube Links 123</h1>
 
     <table>
         <thead>
@@ -170,7 +178,7 @@
                                     <div class="progress" id="progress_${i}_1"></div>
                                 </div>
                                 <div id="fileUrl_${i}_1"></div>
-                                <button onclick="removeFile(${i}, 1)">Remove File</button>
+                                <button id="removeFile_${i}_1">Remove File</button>
                             </td>
                             <td>
                                 <button onclick="document.getElementById('fileInput_${i}_2').click();">Upload File 2</button>
@@ -179,7 +187,7 @@
                                     <div class="progress" id="progress_${i}_2"></div>
                                 </div>
                                 <div id="fileUrl_${i}_2"></div>
-                                <button onclick="removeFile(${i}, 2)">Remove File</button>
+                                <button id="removeFile_${i}_2">Remove File</button>
                             </td>
                             <td>
                                 <button onclick="document.getElementById('fileInput_${i}_3').click();">Upload File 3</button>
@@ -188,7 +196,7 @@
                                     <div class="progress" id="progress_${i}_3"></div>
                                 </div>
                                 <div id="fileUrl_${i}_3"></div>
-                                <button onclick="removeFile(${i}, 3)">Remove File</button>
+                                <button id="removeFile_${i}_3">Remove File</button>
                             </td>
                             <td>
                                 <input type="text" id="youtubeLink_${i}" placeholder="Enter YouTube Link">
