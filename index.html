@@ -75,6 +75,13 @@
             }
         }
 
+        // Function to handle deleting YouTube link
+        function deleteYouTubeLink(personId) {
+            localStorage.removeItem(`youtubeLink_${personId}`);
+            document.getElementById(`youtubeLink_${personId}`).value = '';
+            alert('YouTube link deleted!');
+        }
+
         // Function to populate saved data on page load
         window.onload = function() {
             for (let i = 1; i <= 22; i++) {
@@ -113,6 +120,12 @@
                 const youtubeLinkButton = document.getElementById(`saveYouTubeLink_${i}`);
                 youtubeLinkButton.addEventListener('click', function() {
                     saveYouTubeLink(i);
+                });
+
+                // Attach deleteYouTubeLink functionality
+                const deleteYouTubeLinkButton = document.getElementById(`deleteYouTubeLink_${i}`);
+                deleteYouTubeLinkButton.addEventListener('click', function() {
+                    deleteYouTubeLink(i);
                 });
             }
         }
@@ -211,6 +224,7 @@
                             <td>
                                 <input type="text" id="youtubeLink_${i}" placeholder="Enter YouTube Link">
                                 <button id="saveYouTubeLink_${i}">Save YouTube Link</button>
+                                <button id="deleteYouTubeLink_${i}">Delete YouTube Link</button>
                             </td>
                         </tr>
                     `);
