@@ -10,9 +10,9 @@
         // Import necessary Firebase modules
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
         import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
-        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
-        // Firebase Configuration (replace with your Firebase project details)
+        // Firebase Configuration (replace with your Firebase details)
         const firebaseConfig = {
             apiKey: "AIzaSyADzvt0GHQn2PhdRVGGgDdOLb_f9AzDQJw",
             authDomain: "izb-buc04-2025-22695.firebaseapp.com",
@@ -25,7 +25,7 @@
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const storage = getStorage(app);
-        const db = getFirestore(app);
+        const firestore = getFirestore(app);
 
         // Function to handle file upload
         function uploadFile(personId, column, file) {
@@ -43,93 +43,78 @@
                 },
                 function() {
                     getDownloadURL(uploadTask.snapshot.ref).then(function(downloadURL) {
+                        // Display the download link to the user
                         document.getElementById(`fileUrl_${personId}_${column}`).innerHTML = 
                             `<a href="${downloadURL}" target="_blank">File uploaded successfully! Click here to view.</a>`;
-                        localStorage.setItem(`file_${personId}_${column}`, downloadURL); // Save to localStorage for persistence
-                        saveFileUrlToFirestore(personId, column, downloadURL); // Save file URL to Firestore
+                        
+                        // Save the file URL to localStorage for persistence
+                        localStorage.setItem(`file_${personId}_${column}`, downloadURL);
+
+                        // Save the file URL to Firestore
+                        saveFileUrlToFirestore(personId, column, downloadURL);
                     });
                 }
             );
         }
 
-        // Function to remove file from Firebase Storage
+        // Function to handle file removal
         function removeFile(personId, column) {
             const fileUrl = localStorage.getItem(`file_${personId}_${column}`);
+            
             if (fileUrl) {
-                const fileRef = ref(storage, fileUrl);
+                const storagePath = fileUrl.split('?')[0].split('/')[7];  // Get the file path from URL
+                const fileRef = ref(storage, `uploads/${personId}/file${column}/${storagePath}`); // Correct file reference for deletion
+                
                 deleteObject(fileRef).then(() => {
                     document.getElementById(`fileUrl_${personId}_${column}`).innerHTML = '';
                     localStorage.removeItem(`file_${personId}_${column}`);
-                    removeFileFromFirestore(personId, column); // Remove file URL from Firestore
+                    
+                    // Remove the file URL from Firestore as well
+                    removeFileFromFirestore(personId, column);
                 }).catch(error => {
                     console.error('Error removing file:', error);
                     alert('Error removing file');
                 });
+            } else {
+                console.log('No file URL found in localStorage');
             }
         }
 
         // Function to save file URL to Firestore
-        function saveFileUrlToFirestore(personId, column, fileUrl) {
-            const docRef = doc(db, 'files', `person${personId}`);
-            getDoc(docRef).then(docSnap => {
-                if (docSnap.exists()) {
-                    // Update existing document
-                    const data = docSnap.data();
-                    data[`file${column}`] = fileUrl;
-                    setDoc(docRef, data).catch((error) => {
-                        console.error("Error updating Firestore document: ", error);
-                    });
-                } else {
-                    // Create new document
-                    const data = {
-                        [`file${column}`]: fileUrl,
-                    };
-                    setDoc(docRef, data).catch((error) => {
-                        console.error("Error adding document to Firestore: ", error);
-                    });
-                }
-            }).catch(error => {
-                console.error("Error fetching Firestore document: ", error);
-            });
+        async function saveFileUrlToFirestore(personId, column, downloadURL) {
+            const fileDocRef = doc(firestore, `uploads/${personId}/file${column}`);
+            await setDoc(fileDocRef, {
+                url: downloadURL
+            }, { merge: true });
         }
 
         // Function to remove file URL from Firestore
-        function removeFileFromFirestore(personId, column) {
-            const docRef = doc(db, 'files', `person${personId}`);
-            getDoc(docRef).then(docSnap => {
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    delete data[`file${column}`];
-                    setDoc(docRef, data).catch((error) => {
-                        console.error("Error updating Firestore document: ", error);
-                    });
-                }
-            }).catch(error => {
-                console.error("Error fetching Firestore document: ", error);
-            });
+        async function removeFileFromFirestore(personId, column) {
+            const fileDocRef = doc(firestore, `uploads/${personId}/file${column}`);
+            await deleteDoc(fileDocRef);
         }
 
-        // Function to handle saving YouTube link
+        // Function to save YouTube link
         function saveYouTubeLink(personId) {
             const youtubeLink = document.getElementById(`youtubeLink_${personId}`).value;
             if (youtubeLink) {
                 localStorage.setItem(`youtubeLink_${personId}`, youtubeLink);  // Save to localStorage for persistence
-                saveYouTubeLinkToFirestore(personId, youtubeLink); // Save YouTube link to Firestore
                 alert('YouTube link saved!');
+                
+                // Save the YouTube link to Firestore as well
+                saveYouTubeLinkToFirestore(personId, youtubeLink);
             } else {
                 alert('Please enter a YouTube link');
             }
         }
 
         // Function to save YouTube link to Firestore
-        function saveYouTubeLinkToFirestore(personId, youtubeLink) {
-            const docRef = doc(db, 'youtubeLinks', `person${personId}`);
-            setDoc(docRef, { link: youtubeLink }).catch((error) => {
-                console.error("Error saving YouTube link to Firestore: ", error);
-            });
+        async function saveYouTubeLinkToFirestore(personId, youtubeLink) {
+            const youtubeDocRef = doc(firestore, `youtubeLinks/${personId}`);
+            await setDoc(youtubeDocRef, { link: youtubeLink });
         }
 
-        // Populate saved data on page load
+        // Function to populate saved data on page load
         window.onload = function() {
             for (let i = 1; i <= 22; i++) {
                 for (let j = 1; j <= 3; j++) {
@@ -262,14 +247,15 @@
                             </div>
                         </td>
                         <td>
-                            <input type="text" id="youtubeLink_${i}" placeholder="Enter YouTube link">
+                            <input type="text" id="youtubeLink_${i}" placeholder="Enter YouTube Link">
                             <button id="saveYouTubeLink_${i}">Save YouTube Link</button>
                         </td>
                     </tr>`;
-                    document.querySelector("tbody").innerHTML += row;
+                    document.querySelector('tbody').innerHTML += row;
                 }
             </script>
         </tbody>
     </table>
+
 </body>
 </html>
