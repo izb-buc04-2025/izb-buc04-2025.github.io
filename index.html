@@ -10,6 +10,7 @@
         // Import necessary Firebase modules
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
         import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
+        import { getFirestore, collection, addDoc, doc, getDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
         // Firebase Configuration (replace with your Firebase details)
         const firebaseConfig = {
@@ -24,9 +25,10 @@
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const storage = getStorage(app);
+        const db = getFirestore(app);
 
         // Function to handle file upload
-        function uploadFile(personId, column, file) {
+        async function uploadFile(personId, column, file) {
             const storageRef = ref(storage, `uploads/${personId}/file${column}/${file.name}`);
             const uploadTask = uploadBytesResumable(storageRef, file);
 
@@ -39,25 +41,37 @@
                     console.error('Error uploading file:', error);
                     alert('Error uploading file');
                 },
-                function() {
-                    getDownloadURL(uploadTask.snapshot.ref).then(function(downloadURL) {
-                        document.getElementById(`fileUrl_${personId}_${column}`).innerHTML = 
-                            `<a href="${downloadURL}" target="_blank">File uploaded successfully! Click here to view.</a>`;
-                        localStorage.setItem(`file_${personId}_${column}`, downloadURL); // Save to localStorage for persistence
+                async function() {
+                    const downloadURL = await getDownloadURL(uploadTask.snapshot.ref());
+
+                    // Save the download URL to Firestore
+                    await setDoc(doc(db, "files", `${personId}_${column}`), {
+                        fileUrl: downloadURL
                     });
+
+                    document.getElementById(`fileUrl_${personId}_${column}`).innerHTML = 
+                        `<a href="${downloadURL}" target="_blank">File uploaded successfully! Click here to view.</a>`;
                 }
             );
         }
 
         // Function to handle file removal
-        function removeFile(personId, column) {
-            const fileUrl = localStorage.getItem(`file_${personId}_${column}`);
-            if (fileUrl) {
+        async function removeFile(personId, column) {
+            const fileDocRef = doc(db, "files", `${personId}_${column}`);
+            const fileDoc = await getDoc(fileDocRef);
+
+            if (fileDoc.exists()) {
+                const fileUrl = fileDoc.data().fileUrl;
                 const fileRef = ref(storage, fileUrl);
-                deleteObject(fileRef).then(() => {
+
+                // Delete file from Firebase Storage
+                deleteObject(fileRef).then(async () => {
+                    // Delete the file metadata from Firestore
+                    await deleteDoc(fileDocRef);
+
+                    // Update the UI and alert the user
                     document.getElementById(`fileUrl_${personId}_${column}`).innerHTML = '';
-                    localStorage.removeItem(`file_${personId}_${column}`);
-                    alert("File removed successfully!");
+                    alert('File removed successfully!');
                 }).catch(error => {
                     console.error('Error removing file:', error);
                     alert('Error removing file');
@@ -68,10 +82,14 @@
         }
 
         // Function to handle saving YouTube link
-        function saveYouTubeLink(personId) {
+        async function saveYouTubeLink(personId) {
             const youtubeLink = document.getElementById(`youtubeLink_${personId}`).value;
             if (youtubeLink) {
-                localStorage.setItem(`youtubeLink_${personId}`, youtubeLink);  // Save to localStorage for persistence
+                // Save to Firestore
+                await setDoc(doc(db, "youtubeLinks", `${personId}`), {
+                    youtubeLink: youtubeLink
+                });
+
                 alert('YouTube link saved!');
             } else {
                 alert('Please enter a YouTube link');
@@ -79,17 +97,22 @@
         }
 
         // Function to populate saved data on page load
-        window.onload = function() {
+        window.onload = async function() {
             for (let i = 1; i <= 22; i++) {
                 for (let j = 1; j <= 3; j++) {
-                    const fileUrl = localStorage.getItem(`file_${i}_${j}`);
-                    if (fileUrl) {
+                    const fileDocRef = doc(db, "files", `${i}_${j}`);
+                    const fileDoc = await getDoc(fileDocRef);
+                    if (fileDoc.exists()) {
+                        const fileUrl = fileDoc.data().fileUrl;
                         document.getElementById(`fileUrl_${i}_${j}`).innerHTML = 
                             `<a href="${fileUrl}" target="_blank">File uploaded successfully! Click here to view.</a>`;
                     }
                 }
-                const youtubeLink = localStorage.getItem(`youtubeLink_${i}`);
-                if (youtubeLink) {
+
+                const youtubeLinkDocRef = doc(db, "youtubeLinks", `${i}`);
+                const youtubeLinkDoc = await getDoc(youtubeLinkDocRef);
+                if (youtubeLinkDoc.exists()) {
+                    const youtubeLink = youtubeLinkDoc.data().youtubeLink;
                     document.getElementById(`youtubeLink_${i}`).value = youtubeLink;
                 }
 
