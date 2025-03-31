@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>File Upload to Firebase</title>
+    <title>File Upload and YouTube Link Storage</title>
 
     <!-- Firebase SDK for ES Modules -->
     <script type="module">
+        // Import necessary Firebase modules
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
         import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
-        import { getFirestore, collection, addDoc, getDocs, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
         // Firebase Configuration (replace with your Firebase details)
         const firebaseConfig = {
@@ -24,146 +24,95 @@
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const storage = getStorage(app);
-        const db = getFirestore(app);
 
-        // Handle file upload for each row (person) and column (file)
-        function handleFileInputChange(event, rowId, colId) {
-            const file = event.target.files[0];
-            if (file) {
-                uploadFile(file, rowId, colId);
-            }
-        }
-
-        // Function to upload file to Firebase Storage
-        async function uploadFile(file, rowId, colId) {
-            const storageRef = ref(storage, `uploads/person_${rowId}_file_${colId}_${file.name}`); // Unique path for each file
+        // Function to handle file upload
+        function uploadFile(personId, column, file) {
+            const storageRef = ref(storage, `uploads/${personId}/file${column}/${file.name}`);
             const uploadTask = uploadBytesResumable(storageRef, file);
 
-            // Monitor the upload progress
-            uploadTask.on('state_changed', 
+            uploadTask.on('state_changed',
                 function(snapshot) {
                     const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                    document.getElementById(`progress-${rowId}-${colId}`).style.width = progress + '%';
-                }, 
+                    document.getElementById(`progress_${personId}_${column}`).style.width = progress + '%';
+                },
                 function(error) {
                     console.error('Error uploading file:', error);
                     alert('Error uploading file');
                 },
-                async function() {
-                    // On successful upload, get the download URL
-                    const downloadURL = await getDownloadURL(uploadTask.snapshot.ref());
-                    const fileLink = `<a href="${downloadURL}" target="_blank">File uploaded successfully! Click here to view the file.</a>`;
-                    document.getElementById(`fileUrl-${rowId}-${colId}`).innerHTML = fileLink;
-
-                    // Save the file URL to Firestore
-                    await saveFileURL(rowId, colId, downloadURL);
+                function() {
+                    getDownloadURL(uploadTask.snapshot.ref).then(function(downloadURL) {
+                        document.getElementById(`fileUrl_${personId}_${column}`).innerHTML = 
+                            `<a href="${downloadURL}" target="_blank">File uploaded successfully! Click here to view.</a>`;
+                        localStorage.setItem(`file_${personId}_${column}`, downloadURL); // Save to localStorage for persistence
+                    });
                 }
             );
         }
 
-        // Save file URL to Firestore
-        async function saveFileURL(rowId, colId, downloadURL) {
-            const fileRef = doc(db, "uploads", `person_${rowId}_file_${colId}`);
-            await setDoc(fileRef, { url: downloadURL });
-        }
-
-        // Remove file from Firebase Storage and Firestore
-        async function removeFile(rowId, colId) {
-            const fileRef = ref(storage, `uploads/person_${rowId}_file_${colId}`);
-            await deleteObject(fileRef);
-            document.getElementById(`fileUrl-${rowId}-${colId}`).innerHTML = '';
-
-            // Remove the URL from Firestore
-            const fileDoc = doc(db, "uploads", `person_${rowId}_file_${colId}`);
-            await deleteDoc(fileDoc);
-
-            alert('File removed successfully');
-        }
-
-        // Load file URLs from Firestore when the page loads
-        async function loadFileURLs() {
-            const querySnapshot = await getDocs(collection(db, "uploads"));
-            querySnapshot.forEach((doc) => {
-                const { url } = doc.data();
-                const [rowId, colId] = doc.id.split('_').slice(1, 3).map(Number);
-                document.getElementById(`fileUrl-${rowId}-${colId}`).innerHTML = `<a href="${url}" target="_blank">File uploaded! Click here to view the file.</a>`;
-            });
-        }
-
-        // Generate the table dynamically
-        window.onload = function() {
-            const tableBody = document.getElementById('tableBody');
-            for (let i = 1; i <= 22; i++) {
-                let row = document.createElement('tr');
-                let personCell = document.createElement('td');
-                personCell.innerText = `Person ${i}`;
-                row.appendChild(personCell);
-
-                for (let j = 1; j <= 4; j++) {
-                    let cell = document.createElement('td');
-                    cell.classList.add('upload-cell');
-
-                    // Create file input
-                    let fileInput = document.createElement('input');
-                    fileInput.type = 'file';
-                    fileInput.id = `fileInput-${i}-${j}`;
-                    fileInput.addEventListener('change', function(event) {
-                        handleFileInputChange(event, i, j);
-                    });
-                    cell.appendChild(fileInput);
-
-                    // Create progress bar
-                    let progressBar = document.createElement('div');
-                    progressBar.classList.add('progress-bar');
-                    let progress = document.createElement('div');
-                    progress.classList.add('progress');
-                    progress.id = `progress-${i}-${j}`;
-                    progressBar.appendChild(progress);
-                    cell.appendChild(progressBar);
-
-                    // Create file link display
-                    let fileUrl = document.createElement('div');
-                    fileUrl.id = `fileUrl-${i}-${j}`;
-                    cell.appendChild(fileUrl);
-
-                    // Create remove button
-                    let removeButton = document.createElement('button');
-                    removeButton.innerText = 'Remove';
-                    removeButton.addEventListener('click', function() {
-                        removeFile(i, j);
-                    });
-                    cell.appendChild(removeButton);
-
-                    row.appendChild(cell);
-                }
-                tableBody.appendChild(row);
+        // Function to handle file removal
+        function removeFile(personId, column) {
+            const fileUrl = localStorage.getItem(`file_${personId}_${column}`);
+            if (fileUrl) {
+                const fileRef = ref(storage, fileUrl);
+                deleteObject(fileRef).then(() => {
+                    document.getElementById(`fileUrl_${personId}_${column}`).innerHTML = '';
+                    localStorage.removeItem(`file_${personId}_${column}`);
+                }).catch(error => {
+                    console.error('Error removing file:', error);
+                    alert('Error removing file');
+                });
             }
+        }
 
-            // Load file URLs from Firestore
-            loadFileURLs();
-        };
+        // Event listener for YouTube link saving
+        function saveYouTubeLink(personId) {
+            const youtubeLink = document.getElementById(`youtubeLink_${personId}`).value;
+            localStorage.setItem(`youtubeLink_${personId}`, youtubeLink);  // Save to localStorage for persistence
+            alert('YouTube link saved!');
+        }
+
+        // Function to populate saved data on page load
+        window.onload = function() {
+            for (let i = 1; i <= 22; i++) {
+                for (let j = 1; j <= 3; j++) {
+                    const fileUrl = localStorage.getItem(`file_${i}_${j}`);
+                    if (fileUrl) {
+                        document.getElementById(`fileUrl_${i}_${j}`).innerHTML = 
+                            `<a href="${fileUrl}" target="_blank">File uploaded successfully! Click here to view.</a>`;
+                    }
+                }
+                const youtubeLink = localStorage.getItem(`youtubeLink_${i}`);
+                if (youtubeLink) {
+                    document.getElementById(`youtubeLink_${i}`).value = youtubeLink;
+                }
+            }
+        }
     </script>
 
     <style>
         body {
             font-family: Arial, sans-serif;
-            padding: 20px;
             text-align: center;
+            padding: 20px;
         }
         table {
-            width: 100%;
-            margin: 20px auto;
+            width: 80%;
+            margin: 0 auto;
             border-collapse: collapse;
         }
         th, td {
             padding: 10px;
             border: 1px solid #ddd;
+            text-align: center;
+        }
+        input[type="file"] {
+            display: none;
         }
         .progress-bar {
             width: 100%;
             height: 20px;
             background-color: #f3f3f3;
-            margin-top: 10px;
+            margin-top: 5px;
             border-radius: 5px;
         }
         .progress {
@@ -172,15 +121,20 @@
             width: 0%;
             border-radius: 5px;
         }
-        .upload-cell {
-            text-align: center;
+        button {
+            padding: 5px 10px;
+            margin-top: 10px;
+        }
+        input[type="text"] {
+            width: 90%;
+            padding: 5px;
         }
     </style>
 </head>
 <body>
-    <h1>File Upload Table</h1>
-    
-    <!-- Table for 22 people and 4 upload columns -->
+
+    <h1>Upload Files and Save YouTube Links</h1>
+
     <table>
         <thead>
             <tr>
@@ -188,12 +142,53 @@
                 <th>File 1</th>
                 <th>File 2</th>
                 <th>File 3</th>
-                <th>File 4</th>
+                <th>YouTube Link</th>
             </tr>
         </thead>
-        <tbody id="tableBody">
-            <!-- Table rows will be dynamically generated by JavaScript -->
+        <tbody>
+            <!-- Loop through 22 people -->
+            <script>
+                for (let i = 1; i <= 22; i++) {
+                    document.write(`
+                        <tr>
+                            <td>Person ${i}</td>
+                            <td>
+                                <button onclick="document.getElementById('fileInput_${i}_1').click();">Upload File 1</button>
+                                <input type="file" id="fileInput_${i}_1" onchange="uploadFile(${i}, 1, this.files[0])">
+                                <div class="progress-bar">
+                                    <div class="progress" id="progress_${i}_1"></div>
+                                </div>
+                                <div id="fileUrl_${i}_1"></div>
+                                <button onclick="removeFile(${i}, 1)">Remove File</button>
+                            </td>
+                            <td>
+                                <button onclick="document.getElementById('fileInput_${i}_2').click();">Upload File 2</button>
+                                <input type="file" id="fileInput_${i}_2" onchange="uploadFile(${i}, 2, this.files[0])">
+                                <div class="progress-bar">
+                                    <div class="progress" id="progress_${i}_2"></div>
+                                </div>
+                                <div id="fileUrl_${i}_2"></div>
+                                <button onclick="removeFile(${i}, 2)">Remove File</button>
+                            </td>
+                            <td>
+                                <button onclick="document.getElementById('fileInput_${i}_3').click();">Upload File 3</button>
+                                <input type="file" id="fileInput_${i}_3" onchange="uploadFile(${i}, 3, this.files[0])">
+                                <div class="progress-bar">
+                                    <div class="progress" id="progress_${i}_3"></div>
+                                </div>
+                                <div id="fileUrl_${i}_3"></div>
+                                <button onclick="removeFile(${i}, 3)">Remove File</button>
+                            </td>
+                            <td>
+                                <input type="text" id="youtubeLink_${i}" placeholder="Enter YouTube Link">
+                                <button onclick="saveYouTubeLink(${i})">Save YouTube Link</button>
+                            </td>
+                        </tr>
+                    `);
+                }
+            </script>
         </tbody>
     </table>
+
 </body>
 </html>
