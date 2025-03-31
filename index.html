@@ -64,11 +64,15 @@
             }
         }
 
-        // Event listener for YouTube link saving
+        // Function to handle saving YouTube link
         function saveYouTubeLink(personId) {
             const youtubeLink = document.getElementById(`youtubeLink_${personId}`).value;
-            localStorage.setItem(`youtubeLink_${personId}`, youtubeLink);  // Save to localStorage for persistence
-            alert('YouTube link saved!');
+            if (youtubeLink) {
+                localStorage.setItem(`youtubeLink_${personId}`, youtubeLink);  // Save to localStorage for persistence
+                alert('YouTube link saved!');
+            } else {
+                alert('Please enter a YouTube link');
+            }
         }
 
         // Function to populate saved data on page load
@@ -104,6 +108,12 @@
                         removeFile(i, j);
                     });
                 }
+
+                // Attach saveYouTubeLink functionality
+                const youtubeLinkButton = document.getElementById(`saveYouTubeLink_${i}`);
+                youtubeLinkButton.addEventListener('click', function() {
+                    saveYouTubeLink(i);
+                });
             }
         }
     </script>
@@ -152,7 +162,7 @@
 </head>
 <body>
 
-    <h1>Upload Files and Save YouTube Links 123</h1>
+    <h1>Upload Files and Save YouTube Links</h1>
 
     <table>
         <thead>
@@ -200,7 +210,7 @@
                             </td>
                             <td>
                                 <input type="text" id="youtubeLink_${i}" placeholder="Enter YouTube Link">
-                                <button onclick="saveYouTubeLink(${i})">Save YouTube Link</button>
+                                <button id="saveYouTubeLink_${i}">Save YouTube Link</button>
                             </td>
                         </tr>
                     `);
