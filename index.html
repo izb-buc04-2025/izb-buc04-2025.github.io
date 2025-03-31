@@ -34,6 +34,9 @@
             console.error("Error signing in anonymously:", error);
         });
 
+        // Store file names in memory or localStorage
+        const fileNames = {};
+
         // Function to handle file upload
         function uploadFile(personId, column, file) {
             const storageRef = ref(storage, `uploads/${personId}/file${column}/${file.name}`);
@@ -61,13 +64,27 @@
                         }).catch(error => {
                             console.error('Error saving file URL in Firestore:', error);
                         });
+
+                        // Store the file name in memory
+                        if (!fileNames[personId]) fileNames[personId] = {};
+                        fileNames[personId][column] = file.name;
+
+                        // Optionally, save the file names in localStorage for persistence across page refreshes
+                        localStorage.setItem('fileNames', JSON.stringify(fileNames));
                     });
                 }
             );
         }
 
         // Function to handle file removal
-        function removeFile(personId, column, fileName) {
+        function removeFile(personId, column) {
+            const fileName = fileNames[personId]?.[column]; // Get the file name from memory
+            if (!fileName) {
+                console.error('No file selected to remove');
+                alert('No file selected to remove');
+                return;
+            }
+
             const fileRef = ref(storage, `uploads/${personId}/file${column}/${fileName}`);
             deleteObject(fileRef).then(() => {
                 document.getElementById(`fileUrl_${personId}_${column}`).innerHTML = '';
@@ -76,6 +93,9 @@
                     .catch(error => {
                         console.error('Error removing file URL in Firestore:', error);
                     });
+                // Clear the file name from memory and localStorage
+                delete fileNames[personId][column];
+                localStorage.setItem('fileNames', JSON.stringify(fileNames));
             }).catch(error => {
                 console.error('Error removing file:', error);
                 alert('Error removing file');
@@ -99,6 +119,8 @@
 
         // Function to populate saved data on page load
         window.onload = function() {
+            // Load file names from localStorage (if available)
+            const savedFileNames = JSON.parse(localStorage.getItem('fileNames')) || {};
             for (let i = 1; i <= 22; i++) {
                 for (let j = 1; j <= 3; j++) {
                     const fileRef = doc(db, "files", `file_${i}_${j}`);
@@ -110,6 +132,15 @@
                                 document.getElementById(`fileUrl_${i}_${j}`).innerHTML = 
                                     `<a href="${fileUrl}" target="_blank">File uploaded successfully! Click here to view.</a>`;
                             }
+
+                            // Store the file name in memory for future removal
+                            if (!fileNames[i]) fileNames[i] = {};
+                            fileNames[i][j] = fileName;
+
+                            // Store file names in localStorage
+                            savedFileNames[i] = savedFileNames[i] || {};
+                            savedFileNames[i][j] = fileName;
+                            localStorage.setItem('fileNames', JSON.stringify(savedFileNames));
                         }
                     });
 
@@ -125,12 +156,7 @@
                     // Attach removeFile functionality to remove buttons
                     const removeButton = document.getElementById(`removeFile_${i}_${j}`);
                     removeButton.addEventListener('click', function() {
-                        const fileName = document.getElementById(`fileInput_${i}_${j}`).files[0]?.name;
-                        if (fileName) {
-                            removeFile(i, j, fileName);  // Pass file name to remove
-                        } else {
-                            console.error('No file selected to remove');
-                        }
+                        removeFile(i, j);
                     });
                 }
 
@@ -213,7 +239,7 @@
             <!-- Loop through 22 people -->
             <script>
                 for (let i = 1; i <= 22; i++) {
-                    document.write(`  
+                    document.write(`
                         <tr>
                             <td>Person ${i}</td>
                             <td>
