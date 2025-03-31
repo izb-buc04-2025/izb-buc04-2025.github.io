@@ -7,9 +7,11 @@
 
     <!-- Firebase SDK for ES Modules -->
     <script type="module">
+        // Import the necessary Firebase modules
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-        import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
-        import { getFirestore, collection, addDoc, getDocs, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+        import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
+        import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+        import { enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
         // Firebase Configuration (replace with your Firebase details)
         const firebaseConfig = {
@@ -26,139 +28,104 @@
         const storage = getStorage(app);
         const db = getFirestore(app);
 
-        // Handle file upload for each row (person) and column (file)
-        function handleFileInputChange(event, rowId, colId) {
-            const file = event.target.files[0];
-            if (file) {
-                uploadFile(file, rowId, colId);
-            }
-        }
-
-        // Function to upload file to Firebase Storage
-        async function uploadFile(file, rowId, colId) {
-            const storageRef = ref(storage, `uploads/person_${rowId}_file_${colId}_${file.name}`); // Unique path for each file
-            const uploadTask = uploadBytesResumable(storageRef, file);
-
-            // Monitor the upload progress
-            uploadTask.on('state_changed', 
-                function(snapshot) {
-                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                    document.getElementById(`progress-${rowId}-${colId}`).style.width = progress + '%';
-                }, 
-                function(error) {
-                    console.error('Error uploading file:', error);
-                    alert('Error uploading file');
-                },
-                async function() {
-                    // On successful upload, get the download URL
-                    const downloadURL = await getDownloadURL(uploadTask.snapshot.ref());
-                    const fileLink = `<a href="${downloadURL}" target="_blank">File uploaded successfully! Click here to view the file.</a>`;
-                    document.getElementById(`fileUrl-${rowId}-${colId}`).innerHTML = fileLink;
-
-                    // Save the file URL to Firestore
-                    await saveFileURL(rowId, colId, downloadURL);
+        // Enable Offline Persistence for Firestore
+        enableIndexedDbPersistence(db)
+            .catch((err) => {
+                if (err.code === 'failed-precondition') {
+                    console.log('Persistence failed due to multiple tabs open');
+                } else if (err.code === 'unimplemented') {
+                    console.log('Persistence is not available in this browser');
                 }
-            );
-        }
-
-        // Save file URL to Firestore
-        async function saveFileURL(rowId, colId, downloadURL) {
-            const fileRef = doc(db, "uploads", `person_${rowId}_file_${colId}`);
-            await setDoc(fileRef, { url: downloadURL });
-        }
-
-        // Remove file from Firebase Storage and Firestore
-        async function removeFile(rowId, colId) {
-            const fileRef = ref(storage, `uploads/person_${rowId}_file_${colId}`);
-            await deleteObject(fileRef);
-            document.getElementById(`fileUrl-${rowId}-${colId}`).innerHTML = '';
-
-            // Remove the URL from Firestore
-            const fileDoc = doc(db, "uploads", `person_${rowId}_file_${colId}`);
-            await deleteDoc(fileDoc);
-
-            alert('File removed successfully');
-        }
-
-        // Load file URLs from Firestore when the page loads
-        async function loadFileURLs() {
-            const querySnapshot = await getDocs(collection(db, "uploads"));
-            querySnapshot.forEach((doc) => {
-                const { url } = doc.data();
-                const [rowId, colId] = doc.id.split('_').slice(1, 3).map(Number);
-                document.getElementById(`fileUrl-${rowId}-${colId}`).innerHTML = `<a href="${url}" target="_blank">File uploaded! Click here to view the file.</a>`;
             });
+
+        // Trigger file input on button click for each cell
+        document.addEventListener("DOMContentLoaded", function() {
+            document.querySelectorAll('.uploadButton').forEach(button => {
+                button.addEventListener('click', function() {
+                    const rowId = button.dataset.rowId;
+                    const colId = button.dataset.colId;
+                    document.getElementById(`fileInput-${rowId}-${colId}`).click();
+                });
+            });
+        });
+
+        // Handle file input change event for all files
+        document.addEventListener("change", function(event) {
+            if (event.target && event.target.matches('input[type="file"]')) {
+                const rowId = event.target.dataset.rowId;
+                const colId = event.target.dataset.colId;
+                const file = event.target.files[0];
+                if (file) {
+                    uploadFile(file, rowId, colId);
+                }
+            }
+        });
+
+        // Function to upload the file to Firebase Storage
+        async function uploadFile(file, rowId, colId) {
+            try {
+                const storageRef = ref(storage, `uploads/person_${rowId}_file_${colId}_${file.name}`);
+                const uploadTask = uploadBytesResumable(storageRef, file);
+
+                uploadTask.on('state_changed',
+                    function(snapshot) {
+                        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                        document.getElementById(`progress-${rowId}-${colId}`).style.width = progress + '%';
+                    },
+                    function(error) {
+                        console.error('Error uploading file:', error);
+                        alert('Error uploading file');
+                    },
+                    async function() {
+                        try {
+                            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref());
+                            const fileLink = `<a href="${downloadURL}" target="_blank">File uploaded successfully! Click here to view the file.</a>`;
+                            document.getElementById(`fileUrl-${rowId}-${colId}`).innerHTML = fileLink;
+                            await saveFileURL(rowId, colId, downloadURL);
+                        } catch (error) {
+                            console.error('Error getting download URL or saving to Firestore:', error);
+                            alert('Failed to get file URL or save to Firestore');
+                        }
+                    }
+                );
+            } catch (error) {
+                console.error('Error during file upload:', error);
+                alert('File upload failed');
+            }
         }
 
-        // Generate the table dynamically
-        window.onload = function() {
-            const tableBody = document.getElementById('tableBody');
-            for (let i = 1; i <= 22; i++) {
-                let row = document.createElement('tr');
-                let personCell = document.createElement('td');
-                personCell.innerText = `Person ${i}`;
-                row.appendChild(personCell);
-
-                for (let j = 1; j <= 4; j++) {
-                    let cell = document.createElement('td');
-                    cell.classList.add('upload-cell');
-
-                    // Create file input
-                    let fileInput = document.createElement('input');
-                    fileInput.type = 'file';
-                    fileInput.id = `fileInput-${i}-${j}`;
-                    fileInput.addEventListener('change', function(event) {
-                        handleFileInputChange(event, i, j);
-                    });
-                    cell.appendChild(fileInput);
-
-                    // Create progress bar
-                    let progressBar = document.createElement('div');
-                    progressBar.classList.add('progress-bar');
-                    let progress = document.createElement('div');
-                    progress.classList.add('progress');
-                    progress.id = `progress-${i}-${j}`;
-                    progressBar.appendChild(progress);
-                    cell.appendChild(progressBar);
-
-                    // Create file link display
-                    let fileUrl = document.createElement('div');
-                    fileUrl.id = `fileUrl-${i}-${j}`;
-                    cell.appendChild(fileUrl);
-
-                    // Create remove button
-                    let removeButton = document.createElement('button');
-                    removeButton.innerText = 'Remove';
-                    removeButton.addEventListener('click', function() {
-                        removeFile(i, j);
-                    });
-                    cell.appendChild(removeButton);
-
-                    row.appendChild(cell);
-                }
-                tableBody.appendChild(row);
+        // Function to save file URL to Firestore
+        async function saveFileURL(rowId, colId, url) {
+            try {
+                await setDoc(doc(db, "fileUploads", `person_${rowId}_file_${colId}`), {
+                    fileUrl: url
+                });
+            } catch (error) {
+                console.error('Error saving file URL to Firestore:', error);
             }
-
-            // Load file URLs from Firestore
-            loadFileURLs();
-        };
+        }
     </script>
 
     <style>
         body {
             font-family: Arial, sans-serif;
-            padding: 20px;
             text-align: center;
+            padding: 50px;
         }
+
         table {
             width: 100%;
-            margin: 20px auto;
             border-collapse: collapse;
         }
+
+        table, th, td {
+            border: 1px solid black;
+        }
+
         th, td {
             padding: 10px;
-            border: 1px solid #ddd;
         }
+
         .progress-bar {
             width: 100%;
             height: 20px;
@@ -166,21 +133,27 @@
             margin-top: 10px;
             border-radius: 5px;
         }
+
         .progress {
             height: 100%;
             background-color: #4caf50;
             width: 0%;
             border-radius: 5px;
         }
-        .upload-cell {
-            text-align: center;
+
+        .uploadButton {
+            padding: 10px 20px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        input[type="file"] {
+            display: none;
         }
     </style>
 </head>
 <body>
-    <h1>File Upload Table</h1>
-    
-    <!-- Table for 22 people and 4 upload columns -->
+    <h1>Upload Files to Firebase</h1>
     <table>
         <thead>
             <tr>
@@ -188,11 +161,29 @@
                 <th>File 1</th>
                 <th>File 2</th>
                 <th>File 3</th>
-                <th>File 4</th>
             </tr>
         </thead>
-        <tbody id="tableBody">
-            <!-- Table rows will be dynamically generated by JavaScript -->
+        <tbody>
+            <!-- 22 rows for 22 people -->
+            ${Array.from({ length: 22 }).map((_, rowIndex) => {
+                return `
+                    <tr>
+                        <td>Person ${rowIndex + 1}</td>
+                        ${Array.from({ length: 3 }).map((_, colIndex) => {
+                            return `
+                                <td>
+                                    <button class="uploadButton" data-row-id="${rowIndex + 1}" data-col-id="${colIndex + 1}">Upload File</button>
+                                    <input type="file" id="fileInput-${rowIndex + 1}-${colIndex + 1}" data-row-id="${rowIndex + 1}" data-col-id="${colIndex + 1}">
+                                    <div class="progress-bar">
+                                        <div class="progress" id="progress-${rowIndex + 1}-${colIndex + 1}"></div>
+                                    </div>
+                                    <div id="fileUrl-${rowIndex + 1}-${colIndex + 1}"></div>
+                                </td>
+                            `;
+                        }).join('')}
+                    </tr>
+                `;
+            }).join('')}
         </tbody>
     </table>
 </body>
