@@ -204,9 +204,9 @@
                 });
 
                 // Add the person's name to the table dynamically
-                document.getElementById(`personName_${personId}`).innerText = personNames[personId - 1];
+                document.getElementById(`personName_${personId}`).innerText = personNames[i];
             }
-        }
+        };
     </script>
 
     <style>
@@ -255,6 +255,18 @@
             font-size: 14px;
             color: #555;
             background-color: #f4f4f4;
+        }
+
+        /* New CSS for alternating row colors */
+        tr:nth-child(1) {
+            background-color: #007bff; /* Blue background for the first row */
+            color: white; /* White text for the first row */
+        }
+        tr:nth-child(even) {
+            background-color: #f2f2f2; /* Gray background for even rows */
+        }
+        tr:nth-child(odd) {
+            background-color: white; /* White background for odd rows */
         }
     </style>
 </head>
@@ -319,7 +331,6 @@
         </tbody>
     </table>
 
-    <!-- Footer with "Created by" text -->
     <footer>Created by [Your Name]</footer>
 
 </body>
