@@ -5,9 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My website</title>
 
-    <!-- Firebase SDK for ES Modules -->
     <script type="module">
-        // Import necessary Firebase modules
+        // Firebase imports (same as before, kept for reference)
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
@@ -53,7 +52,6 @@
                 },
                 function() {
                     getDownloadURL(uploadTask.snapshot.ref).then(function(downloadURL) {
-                        // Save the file URL and file name in Firestore
                         setDoc(doc(db, "files", `file_${personId}_${column}`), { 
                             url: downloadURL,
                             fileName: file.name // Store the file name
@@ -78,7 +76,7 @@
 
         // Function to handle file removal
         function removeFile(personId, column) {
-            const fileName = fileNames[personId]?.[column]; // Get the file name from memory
+            const fileName = fileNames[personId]?.[column];
             if (!fileName) {
                 console.error('No file selected to remove');
                 alert('No file selected to remove');
@@ -88,12 +86,10 @@
             const fileRef = ref(storage, `uploads/${personId}/file${column}/${fileName}`);
             deleteObject(fileRef).then(() => {
                 document.getElementById(`fileUrl_${personId}_${column}`).innerHTML = '';
-                // Also remove from Firestore
                 setDoc(doc(db, "files", `file_${personId}_${column}`), { url: "", fileName: "" })
                     .catch(error => {
                         console.error('Error removing file URL in Firestore:', error);
                     });
-                // Clear the file name from memory and localStorage
                 delete fileNames[personId][column];
                 localStorage.setItem('fileNames', JSON.stringify(fileNames));
             }).catch(error => {
@@ -132,7 +128,6 @@
 
         // Function to populate saved data on page load
         window.onload = function() {
-            // Load file names from localStorage (if available)
             const savedFileNames = JSON.parse(localStorage.getItem('fileNames')) || {};
             const personNames = [
                 "John Doe", "Jane Smith", "Michael Johnson", "Emily Davis", "David Clark", "Sophia Taylor", "Lucas White",
@@ -148,24 +143,21 @@
                     getDoc(fileRef).then(docSnapshot => {
                         if (docSnapshot.exists()) {
                             const fileUrl = docSnapshot.data().url;
-                            const fileName = docSnapshot.data().fileName; // Retrieve file name
+                            const fileName = docSnapshot.data().fileName;
                             if (fileUrl) {
                                 document.getElementById(`fileUrl_${personId}_${j}`).innerHTML = 
                                     `<a href="${fileUrl}" target="_blank">File uploaded successfully! Click here to view.</a>`;
                             }
 
-                            // Store the file name in memory for future removal
                             if (!fileNames[personId]) fileNames[personId] = {};
                             fileNames[personId][j] = fileName;
 
-                            // Store file names in localStorage
                             savedFileNames[personId] = savedFileNames[personId] || {};
                             savedFileNames[personId][j] = fileName;
                             localStorage.setItem('fileNames', JSON.stringify(savedFileNames));
                         }
                     });
 
-                    // Attach file input change events dynamically
                     const inputElement = document.getElementById(`fileInput_${personId}_${j}`);
                     inputElement.addEventListener('change', function(event) {
                         const file = event.target.files[0];
@@ -174,14 +166,12 @@
                         }
                     });
 
-                    // Attach removeFile functionality to remove buttons
                     const removeButton = document.getElementById(`removeFile_${personId}_${j}`);
                     removeButton.addEventListener('click', function() {
                         removeFile(personId, j);
                     });
                 }
 
-                // Attach saveYouTubeLink functionality
                 const youtubeLinkButton = document.getElementById(`saveYouTubeLink_${personId}`);
                 youtubeLinkButton.addEventListener('click', function() {
                     saveYouTubeLink(personId);
@@ -197,15 +187,18 @@
                     }
                 });
 
-                // Attach removeYouTubeLink functionality
                 const removeYoutubeLinkButton = document.getElementById(`removeYouTubeLink_${personId}`);
                 removeYoutubeLinkButton.addEventListener('click', function() {
                     removeYouTubeLink(personId);
                 });
 
-                // Add the person's name to the table dynamically
+                // Set the name of the person dynamically
                 document.getElementById(`personName_${personId}`).innerText = personNames[i];
             }
+
+            // Apply the blue background to the first row after it is populated
+            document.querySelector("tr:nth-child(1)").style.backgroundColor = '#007bff';
+            document.querySelector("tr:nth-child(1)").style.color = 'white';
         };
     </script>
 
@@ -258,10 +251,6 @@
         }
 
         /* New CSS for alternating row colors */
-        tr:nth-child(1) {
-            background-color: #007bff; /* Blue background for the first row */
-            color: white; /* White text for the first row */
-        }
         tr:nth-child(even) {
             background-color: #f2f2f2; /* Gray background for even rows */
         }
