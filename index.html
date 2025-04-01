@@ -10,7 +10,7 @@
         // Import necessary Firebase modules
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
         import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-storage.js";
 
         // Firebase Configuration (replace with your Firebase details)
@@ -117,6 +117,19 @@
             }
         }
 
+        // Function to remove YouTube link
+        function removeYouTubeLink(personId) {
+            const youtubeLinkRef = doc(db, "youtubeLinks", `youtubeLink_${personId}`);
+            deleteDoc(youtubeLinkRef)
+                .then(() => {
+                    document.getElementById(`youtubeLink_${personId}`).value = '';  // Clear input field
+                    alert('YouTube link removed!');
+                }).catch(error => {
+                    console.error('Error removing YouTube link:', error);
+                    alert('Error removing YouTube link');
+                });
+        }
+
         // Function to populate saved data on page load
         window.onload = function() {
             // Load file names from localStorage (if available)
@@ -174,6 +187,12 @@
                             document.getElementById(`youtubeLink_${i}`).value = youtubeLink;
                         }
                     }
+                });
+
+                // Attach removeYouTubeLink functionality
+                const removeYouTubeLinkButton = document.getElementById(`removeYouTubeLink_${i}`);
+                removeYouTubeLinkButton.addEventListener('click', function() {
+                    removeYouTubeLink(i);
                 });
             }
         }
@@ -272,6 +291,7 @@
                             <td>
                                 <input type="text" id="youtubeLink_${i}" placeholder="Enter YouTube link">
                                 <button id="saveYouTubeLink_${i}">Save Link</button>
+                                <button id="removeYouTubeLink_${i}">Remove Link</button>
                             </td>
                         </tr>
                     `);
