@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My website</title>
+    <title>Nahrávanie súborov</title>
 
     <script type="module">
         // Firebase imports (same as before, kept for reference)
@@ -58,7 +58,7 @@
                         })
                         .then(() => {
                             document.getElementById(`fileUrl_${personId}_${column}`).innerHTML = 
-                                `<a href="${downloadURL}" target="_blank">File uploaded successfully! Click here to view.</a>`;
+                                `<a href="${downloadURL}" target="_blank">Súbor úspešne nahratý.</a>`;
                         }).catch(error => {
                             console.error('Error saving file URL in Firestore:', error);
                         });
@@ -146,7 +146,7 @@
                             const fileName = docSnapshot.data().fileName;
                             if (fileUrl) {
                                 document.getElementById(`fileUrl_${personId}_${j}`).innerHTML = 
-                                    `<a href="${fileUrl}" target="_blank">File uploaded successfully! Click here to view.</a>`;
+                                    `<a href="${fileUrl}" target="_blank">Kliknite pre zobrazenie súboru.</a>`;
                             }
 
                             if (!fileNames[personId]) fileNames[personId] = {};
@@ -273,11 +273,11 @@
     <table>
         <thead>
             <tr>
-                <th>Person</th>
-                <th>File 1</th>
-                <th>File 2</th>
-                <th>File 3</th>
-                <th>YouTube Link</th>
+                <th>Meno</th>
+                <th>Technické a programové vybavenie počítača</th>
+                <th>Dobrovoľná práca</th>
+                <th>Záverečná práca</th>
+                <th>Youtube link</th>
             </tr>
         </thead>
         <tbody>
@@ -288,36 +288,36 @@
                         <tr>
                             <td id="personName_${i}">Person ${i}</td>
                             <td>
-                                <button onclick="document.getElementById('fileInput_${i}_1').click();">Upload File 1</button>
+                                <button onclick="document.getElementById('fileInput_${i}_1').click();">Nahrať súbor 1</button>
                                 <input type="file" id="fileInput_${i}_1">
                                 <div class="progress-bar">
                                     <div class="progress" id="progress_${i}_1"></div>
                                 </div>
                                 <div id="fileUrl_${i}_1"></div>
-                                <button id="removeFile_${i}_1">Remove File</button>
+                                <button id="removeFile_${i}_1">Odstrániť súbor</button>
                             </td>
                             <td>
-                                <button onclick="document.getElementById('fileInput_${i}_2').click();">Upload File 2</button>
+                                <button onclick="document.getElementById('fileInput_${i}_2').click();">Nahrať súbor 2</button>
                                 <input type="file" id="fileInput_${i}_2">
                                 <div class="progress-bar">
                                     <div class="progress" id="progress_${i}_2"></div>
                                 </div>
                                 <div id="fileUrl_${i}_2"></div>
-                                <button id="removeFile_${i}_2">Remove File</button>
+                                <button id="removeFile_${i}_2">Odstrániť súbor</button>
                             </td>
                             <td>
-                                <button onclick="document.getElementById('fileInput_${i}_3').click();">Upload File 3</button>
+                                <button onclick="document.getElementById('fileInput_${i}_3').click();">Nahrať súbor 3</button>
                                 <input type="file" id="fileInput_${i}_3">
                                 <div class="progress-bar">
                                     <div class="progress" id="progress_${i}_3"></div>
                                 </div>
                                 <div id="fileUrl_${i}_3"></div>
-                                <button id="removeFile_${i}_3">Remove File</button>
+                                <button id="removeFile_${i}_3">Odstrániť súbor</button>
                             </td>
                             <td>
                                 <input type="text" id="youtubeLink_${i}" placeholder="Enter YouTube link">
-                                <button id="saveYouTubeLink_${i}">Save Link</button>
-                                <button id="removeYouTubeLink_${i}">Remove Link</button>
+                                <button id="saveYouTubeLink_${i}">Uložiť link</button>
+                                <button id="removeYouTubeLink_${i}">Odstrániť link</button>
                             </td>
                         </tr>
                     `);
