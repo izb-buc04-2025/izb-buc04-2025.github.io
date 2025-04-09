@@ -136,7 +136,7 @@
                 "Chloe Martinez", "William Hall"
             ];
 
-            for (let i = 0; i < 22; i++) {
+            for (let i = 0; i < 21; i++) {
                 const personId = i + 1;
                 for (let j = 1; j <= 3; j++) {
                     const fileRef = doc(db, "files", `file_${personId}_${j}`);
@@ -281,9 +281,9 @@
             </tr>
         </thead>
         <tbody>
-            <!-- Loop through 22 people -->
+            <!-- Loop through 21 people -->
             <script>
-                for (let i = 1; i <= 22; i++) {
+                for (let i = 1; i <= 21; i++) {
                     document.write(`
                         <tr>
                             <td id="personName_${i}">Person ${i}</td>
